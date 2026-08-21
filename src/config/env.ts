@@ -26,6 +26,8 @@ export const env = {
   appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   apiBaseUrl: readEnv("API_BASE_URL"),
   complianceApiBase: readEnv("COMPLIANCE_API_BASE"),
+  portalJsessionId: readEnv("PORTAL_JSESSIONID"),
+  portalSsoPassword: readEnv("PORTAL_SSO_PASSWORD"),
   sessionSecret: readEnv("SESSION_SECRET") ?? "dev-only-change-me",
   isProduction: process.env.NODE_ENV === "production",
   keycloak: {

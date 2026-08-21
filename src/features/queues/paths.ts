@@ -1,0 +1,15 @@
+export const portalPaths = {
+  regQueue: "/regQueue",
+  payInQueue: "/payInQueue",
+  paymentOutQueue: "/paymentOutQueue",
+  transactionQueue: "/transactionQueue",
+  txnApiQueue: "/txnApiQueue",
+  dataAnonQueue: "/dataAnonQueue",
+  regReport: "/regReportCriteria",
+  txnApiReport: "/txnApiReport",
+  transactionReport: "/transactionReport",
+  paymentInReport: "/paymentInReportCriteria",
+  paymentOutReport: "/paymentOutReportCriteria",
+  workEfficiency: "/workEfficiencyReport",
+  beneReport: "/beneReportApply",
+} as const;

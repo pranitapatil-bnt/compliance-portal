@@ -8,4 +8,7 @@ export type Session = {
 
 export type SessionRecord = Session & {
   idToken: string;
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: number;
 };

@@ -5,6 +5,7 @@ import { BtLogo } from "@/components/layout/bt-logo";
 import { routes } from "@/constants/routes";
 import { LoginForm } from "@/features/auth";
 import { getSession } from "@/lib/auth/session";
+import { asRoute } from "@/lib/utils/routes";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -23,6 +24,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const params = await searchParams;
+
+  if (!params.error) {
+    if (params.from) {
+      redirect(
+        asRoute(`${routes.authLogin}?from=${encodeURIComponent(params.from)}`),
+      );
+    }
+    redirect(asRoute(routes.authLogin));
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-12">

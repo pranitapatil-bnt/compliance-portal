@@ -27,13 +27,18 @@ export async function listUsers(): Promise<User[]> {
     return localUsers;
   }
 
-  const body = await apiGet("/users");
-  const parsed = parseUserList(body);
+  try {
+    const body = await apiGet("/users");
+    const parsed = parseUserList(body);
 
-  if (!parsed.ok) {
-    logger.error("Failed to parse users payload", parsed.error);
-    throw new Error(parsed.error);
+    if (!parsed.ok) {
+      logger.error("Failed to parse users payload", parsed.error);
+      return localUsers;
+    }
+
+    return parsed.data;
+  } catch (error) {
+    logger.error("Failed to load users", error);
+    return localUsers;
   }
-
-  return parsed.data;
 }

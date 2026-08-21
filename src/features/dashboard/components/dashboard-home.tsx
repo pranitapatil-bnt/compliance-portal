@@ -1,4 +1,5 @@
-import { KpiStrip } from "./kpi-strip";
+import { dashboardLinks } from "../data";
+import { loadDashboardData } from "../services/dashboard-service";
 import {
   FulfilmentTasks,
   GeographyPanel,
@@ -8,9 +9,7 @@ import {
   QueueLeaderboard,
   TimelineSchedule,
 } from "./dashboard-widgets";
-import { dashboardLinks, dashboardPlaceholder } from "../data";
-
-const data = dashboardPlaceholder;
+import { KpiStrip } from "./kpi-strip";
 
 function timelineUnit(
   slice: { newest: number; unit: "days" | "minutes" },
@@ -23,7 +22,8 @@ function timelineUnit(
   return unit;
 }
 
-export function DashboardHome() {
+export async function DashboardHome() {
+  const { data, error } = await loadDashboardData();
   const personalUnit =
     data.personal.timeline.unit === "days" ? "days" : "minutes";
   const corporateUnit =
@@ -31,6 +31,11 @@ export function DashboardHome() {
 
   return (
     <div className="flex flex-col gap-5">
+      {error ? (
+        <p className="rounded-2xl bg-[#fdecec] px-4 py-2.5 text-sm text-navy">
+          {error}
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <KpiStrip
           items={[

@@ -10,6 +10,7 @@ import {
   OIDC_MAX_AGE_SECONDS,
   SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
+  TOKENS_COOKIE_NAME,
 } from "@/constants/auth";
 import { isRecord, readString } from "@/lib/utils/guards";
 
@@ -109,7 +110,13 @@ function parseSessionRecord(value: unknown): SessionRecord | null {
   const username = readString(value.username);
   const name = readString(value.name);
   const idToken = readString(value.idToken);
+  const accessToken = readString(value.accessToken);
+  const refreshToken = readString(value.refreshToken);
   const exp = typeof value.exp === "number" ? value.exp : 0;
+  const accessTokenExpiresAt =
+    typeof value.accessTokenExpiresAt === "number"
+      ? value.accessTokenExpiresAt
+      : undefined;
 
   if (!userId || !email || !username || !name || !idToken || exp < Date.now()) {
     return null;
@@ -122,6 +129,9 @@ function parseSessionRecord(value: unknown): SessionRecord | null {
     name,
     roles: readStringList(value.roles),
     idToken,
+    accessToken,
+    refreshToken,
+    accessTokenExpiresAt,
   };
 }
 
@@ -160,9 +170,39 @@ export function readSessionRecord(
   return parseSessionRecord(decodeJson(raw));
 }
 
+function parseTokenCookie(raw: string | undefined): {
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: number;
+} | null {
+  if (!raw) {
+    return null;
+  }
+
+  const value = decodeJson(raw);
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    accessToken: readString(value.accessToken),
+    refreshToken: readString(value.refreshToken),
+    accessTokenExpiresAt:
+      typeof value.accessTokenExpiresAt === "number"
+        ? value.accessTokenExpiresAt
+        : undefined,
+  };
+}
+
 export async function getSessionRecord(): Promise<SessionRecord | null> {
   const store = await cookies();
-  return readSessionRecord(store.get(SESSION_COOKIE_NAME)?.value);
+  const record = readSessionRecord(store.get(SESSION_COOKIE_NAME)?.value);
+  if (!record) {
+    return null;
+  }
+
+  const tokens = parseTokenCookie(store.get(TOKENS_COOKIE_NAME)?.value);
+  return tokens ? { ...record, ...tokens } : record;
 }
 
 export async function getSession(): Promise<Session | null> {
@@ -182,11 +222,28 @@ export function applySessionCookie(
   response.cookies.set(
     SESSION_COOKIE_NAME,
     encodeJson({
-      ...record,
+      userId: record.userId,
+      email: record.email,
+      username: record.username,
+      name: record.name,
+      roles: record.roles,
+      idToken: record.idToken,
       exp: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
     }),
     sessionCookieOptions,
   );
+
+  if (record.accessToken) {
+    response.cookies.set(
+      TOKENS_COOKIE_NAME,
+      encodeJson({
+        accessToken: record.accessToken,
+        refreshToken: record.refreshToken,
+        accessTokenExpiresAt: record.accessTokenExpiresAt,
+      }),
+      sessionCookieOptions,
+    );
+  }
 }
 
 export function applyOidcCookie(
@@ -210,12 +267,22 @@ export function clearAuthCookies(response: NextResponse): void {
     maxAge: 0,
     expires: new Date(0),
   });
+  response.cookies.set(TOKENS_COOKIE_NAME, "", {
+    ...sessionCookieOptions,
+    maxAge: 0,
+    expires: new Date(0),
+  });
   clearOidcCookie(response);
 }
 
 export async function clearSession(): Promise<void> {
   const store = await cookies();
   store.set(SESSION_COOKIE_NAME, "", {
+    ...sessionCookieOptions,
+    maxAge: 0,
+    expires: new Date(0),
+  });
+  store.set(TOKENS_COOKIE_NAME, "", {
     ...sessionCookieOptions,
     maxAge: 0,
     expires: new Date(0),

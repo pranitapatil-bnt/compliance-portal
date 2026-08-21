@@ -27,13 +27,18 @@ export async function listProducts(): Promise<Product[]> {
     return localProducts;
   }
 
-  const body = await apiGet("/products");
-  const parsed = parseProductList(body);
+  try {
+    const body = await apiGet("/products");
+    const parsed = parseProductList(body);
 
-  if (!parsed.ok) {
-    logger.error("Failed to parse products payload", parsed.error);
-    throw new Error(parsed.error);
+    if (!parsed.ok) {
+      logger.error("Failed to parse products payload", parsed.error);
+      return localProducts;
+    }
+
+    return parsed.data;
+  } catch (error) {
+    logger.error("Failed to load products", error);
+    return localProducts;
   }
-
-  return parsed.data;
 }

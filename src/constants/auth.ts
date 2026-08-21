@@ -1,4 +1,5 @@
 export const SESSION_COOKIE_NAME = "cp_session";
+export const TOKENS_COOKIE_NAME = "cp_tokens";
 export const OIDC_COOKIE_NAME = "cp_oidc";
 
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;

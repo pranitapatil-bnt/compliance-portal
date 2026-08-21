@@ -85,6 +85,7 @@ export function startKeycloakLogin(): OidcStart {
   url.searchParams.set("nonce", nonce);
   url.searchParams.set("code_challenge", pkceChallenge(codeVerifier));
   url.searchParams.set("code_challenge_method", "S256");
+  url.searchParams.set("prompt", "login");
 
   return {
     authorizationUrl: url.toString(),
@@ -180,6 +181,10 @@ export function sessionFromTokens(
   const fullName = [given, family].filter(Boolean).join(" ").trim();
   const email = readString(idPayload.email) ?? username;
   const roles = rolesFromPayload(accessPayload ?? idPayload);
+  const expiresAt =
+    typeof accessPayload?.exp === "number"
+      ? accessPayload.exp * 1000
+      : Date.now() + 60_000;
 
   return {
     userId: readString(idPayload.sub) ?? username,
@@ -188,6 +193,9 @@ export function sessionFromTokens(
     name: (readString(idPayload.name) ?? fullName) || username,
     roles,
     idToken,
+    accessToken,
+    refreshToken: tokens.refresh_token,
+    accessTokenExpiresAt: expiresAt,
   };
 }
 
@@ -204,4 +212,73 @@ export function buildKeycloakLogoutUrl(idToken: string | undefined): string {
   }
 
   return url.toString();
+}
+
+export async function refreshKeycloakTokens(
+  refreshToken: string,
+): Promise<TokenResponse> {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+    client_id: env.keycloak.portalClientId,
+  });
+
+  if (env.keycloak.portalClientSecret) {
+    body.set("client_secret", env.keycloak.portalClientSecret);
+  }
+
+  const response = await fetch(keycloakTokenUrl(), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+    cache: "no-store",
+  });
+
+  const payload = (await response.json()) as TokenResponse;
+  if (!response.ok || !payload.access_token) {
+    throw new Error(
+      payload.error_description ?? payload.error ?? "Token refresh failed.",
+    );
+  }
+
+  return payload;
+}
+
+export async function exchangeAccessTokenForSaml(
+  accessToken: string,
+): Promise<string | null> {
+  const body = new URLSearchParams({
+    grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+    subject_token: accessToken,
+    subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
+    requested_token_type: "urn:ietf:params:oauth:token-type:saml2",
+    client_id: env.keycloak.portalClientId,
+    audience: "compliance-portal",
+  });
+
+  if (env.keycloak.portalClientSecret) {
+    body.set("client_secret", env.keycloak.portalClientSecret);
+  }
+
+  const response = await fetch(keycloakTokenUrl(), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+    cache: "no-store",
+  });
+
+  const payload = (await response.json()) as TokenResponse & {
+    issued_token_type?: string;
+  };
+  if (!response.ok || !payload.access_token) {
+    return null;
+  }
+
+  return payload.access_token;
 }

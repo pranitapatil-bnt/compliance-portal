@@ -1,40 +1,45 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { EmptyState } from "@/components/shared/empty-state";
+import { WorkQueueScreen } from "@/components/shared/work-queue-screen";
+import { onboardingColumns } from "@/constants/screens";
+import { getHolisticSearch } from "@/features/queues/services/queue-service";
+import { readQueueQuery } from "@/features/queues/search-body";
+import type { QueueSearchParams } from "@/features/queues/types";
 
 export const metadata: Metadata = {
   title: "Holistic view",
 };
 
-export default function HolisticReportPage() {
+export default async function HolisticReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<QueueSearchParams>;
+}) {
+  const params = await searchParams;
+  const query = readQueueQuery(params, { fromReport: true });
+  const hasSearch = Boolean(query.keyword);
+  const result = hasSearch
+    ? await getHolisticSearch(query)
+    : { rows: [], total: 0 };
+
   return (
     <>
       <PageHeader
         title="Holistic view"
         description="Search a client and open their 360° profile, payments, and checks."
       />
-      <p className="mb-4 rounded-2xl bg-[#e7f3fc] px-4 py-2.5 text-sm text-navy">
-        UI only — client search is not connected yet.
-      </p>
-      <form className="mb-6 flex flex-wrap gap-2 rounded-2xl bg-white p-4 shadow-[0_10px_28px_rgba(15,40,70,0.06)]">
-        <input
-          type="search"
-          placeholder="Client name, email, or account"
-          disabled
-          className="min-w-64 flex-1 rounded-lg border border-navy-line bg-white px-3 py-2 text-sm text-navy-muted"
-        />
-        <button
-          type="button"
-          disabled
-          className="rounded-lg bg-navy px-4 py-2 text-sm font-medium text-white opacity-50"
-        >
-          Search
-        </button>
-      </form>
-      <EmptyState
-        title="No client selected"
-        description="Search results will open personal or corporate holistic details."
+      <WorkQueueScreen
+        columns={onboardingColumns}
+        result={result}
+        keyword={query.keyword}
+        status={query.status}
+        emptyTitle={hasSearch ? "No matching clients" : "No client selected"}
+        emptyDescription={
+          hasSearch
+            ? "Try another name, email, or account."
+            : "Type a client name, email, or account and search."
+        }
       />
     </>
   );
