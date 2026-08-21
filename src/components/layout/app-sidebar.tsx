@@ -4,7 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-import { queueNav, reportNav, queuePaths, reportPaths } from "@/config/navigation";
+import {
+  queueNav,
+  reportNav,
+  queuePaths,
+  reportPaths,
+} from "@/config/navigation";
 import { routes } from "@/constants/routes";
 import type { Session } from "@/lib/auth/types";
 import { cn } from "@/lib/utils/cn";
@@ -23,7 +28,29 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-const iconClass = "size-[18px] shrink-0";
+const iconClass = "size-5 shrink-0";
+
+function IconTile({
+  children,
+  active = false,
+}: {
+  children: ReactNode;
+  active?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center rounded-lg",
+        active ? "bg-white/20 text-white" : "bg-navy-soft text-navy",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+const navItemClass =
+  "relative flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-sm font-semibold transition-colors";
 
 function DashboardIcon() {
   return (
@@ -97,7 +124,7 @@ function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
       className={cn(
-        "ml-auto size-4 shrink-0 text-navy-muted transition-transform",
+        "ml-auto size-4 shrink-0 transition-transform",
         open && "rotate-180",
       )}
       viewBox="0 0 24 24"
@@ -130,14 +157,13 @@ function NavLink({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy-muted transition-colors hover:bg-navy-wash hover:text-navy",
-        active && "bg-[#e7f3fc] text-[#2f7fd4]",
+        navItemClass,
+        active
+          ? "bg-[#1a4a5c] text-white shadow-[0_8px_18px_rgba(26,74,92,0.28)]"
+          : "text-navy hover:bg-navy-soft",
       )}
     >
-      {active ? (
-        <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-[#2f7fd4]" />
-      ) : null}
-      {icon}
+      <IconTile active={active}>{icon}</IconTile>
       {label}
     </Link>
   );
@@ -162,20 +188,20 @@ function ChildLink({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "block rounded-lg py-1.5 pr-2 pl-10 hover:bg-navy-wash",
-        active && "bg-[#e7f3fc]",
+        "block rounded-xl py-2 pr-3 pl-12 transition-colors",
+        active ? "bg-[#e6eef1] ring-1 ring-[#1a4a5c]/20" : "hover:bg-navy-wash",
       )}
     >
       <span
         className={cn(
-          "block text-sm text-navy-muted",
-          active && "font-medium text-[#2f7fd4]",
+          "block text-sm font-semibold",
+          active ? "text-[#1a4a5c]" : "text-navy",
         )}
       >
         {label}
       </span>
       {description ? (
-        <span className="mt-0.5 block text-[11px] leading-snug text-navy-muted/80">
+        <span className="mt-0.5 block text-[11px] leading-snug text-navy-muted">
           {description}
         </span>
       ) : null}
@@ -222,19 +248,24 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto bg-white px-4 pt-8 pb-5 shadow-[4px_0_24px_rgba(15,40,70,0.04)] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-hidden bg-white px-4 pt-8 pb-5 shadow-[4px_0_24px_rgba(15,40,70,0.04)] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <Link
           href={routes.home}
-          className="mb-8 flex items-center justify-center px-2 pt-2"
+          className="mb-2 flex shrink-0 items-center justify-center px-1 pt-1 pb-8"
           onClick={onClose}
         >
-          <BtLogo className="h-14 w-auto" />
+          <span className="flex w-full items-center justify-center rounded-2xl bg-navy-soft px-4 py-4 shadow-[0_8px_20px_rgba(46,26,122,0.08)] ring-1 ring-navy-line">
+            <BtLogo className="h-14 w-auto" />
+          </span>
         </Link>
 
-        <nav className="flex flex-1 flex-col gap-1" aria-label="Primary">
+        <nav
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto"
+          aria-label="Primary"
+        >
           <NavLink
             href={routes.home}
             label="Dashboard"
@@ -246,13 +277,17 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
           <button
             type="button"
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy-muted hover:bg-navy-wash hover:text-navy",
-              queuesActive && "bg-[#e7f3fc] text-[#2f7fd4]",
+              navItemClass,
+              queuesActive
+                ? "bg-[#1a4a5c] text-white shadow-[0_8px_18px_rgba(26,74,92,0.28)]"
+                : "text-navy hover:bg-navy-soft",
             )}
             aria-expanded={queuesOpen}
             onClick={() => setQueuesOpen((value) => !value)}
           >
-            <QueueIcon />
+            <IconTile active={queuesActive}>
+              <QueueIcon />
+            </IconTile>
             Queues
             <ChevronIcon open={queuesOpen} />
           </button>
@@ -272,19 +307,23 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
           <button
             type="button"
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy-muted hover:bg-navy-wash hover:text-navy",
-              reportsActive && "bg-[#e7f3fc] text-[#2f7fd4]",
+              navItemClass,
+              reportsActive
+                ? "bg-[#1a4a5c] text-white shadow-[0_8px_18px_rgba(26,74,92,0.28)]"
+                : "text-navy hover:bg-navy-soft",
             )}
             aria-expanded={reportsOpen}
             onClick={() => setReportsOpen((value) => !value)}
           >
-            <ReportIcon />
+            <IconTile active={reportsActive}>
+              <ReportIcon />
+            </IconTile>
             Reports
             <ChevronIcon open={reportsOpen} />
           </button>
           {reportsOpen ? (
             <>
-              <p className="px-3 pt-2 pb-1 pl-10 text-[10px] font-semibold tracking-[0.12em] text-navy-muted uppercase">
+              <p className="px-3 pt-3 pb-1 pl-12 text-[10px] font-semibold tracking-[0.14em] text-navy uppercase">
                 Search & history
               </p>
               {reportNav.search.map((item) => (
@@ -296,7 +335,7 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
                   onClick={onClose}
                 />
               ))}
-              <p className="px-3 pt-2 pb-1 pl-10 text-[10px] font-semibold tracking-[0.12em] text-navy-muted uppercase">
+              <p className="px-3 pt-3 pb-1 pl-12 text-[10px] font-semibold tracking-[0.14em] text-navy uppercase">
                 Insights
               </p>
               {reportNav.insights.map((item) => (
@@ -312,18 +351,20 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
           ) : null}
         </nav>
 
-        <div className="mt-4 flex flex-col gap-1">
+        <div className="mt-4 flex shrink-0 flex-col gap-1">
           <button
             type="button"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy-muted hover:bg-navy-wash hover:text-navy"
+            className={cn(navItemClass, "text-navy hover:bg-navy-soft")}
             aria-expanded={settingsOpen}
             onClick={() => setSettingsOpen((value) => !value)}
           >
-            <SettingsIcon />
+            <IconTile>
+              <SettingsIcon />
+            </IconTile>
             Settings
           </button>
           {settingsOpen ? (
-            <div className="rounded-xl bg-navy-wash px-3 py-3">
+            <div className="rounded-xl bg-navy-soft px-3 py-3 ring-1 ring-navy-line">
               <p className="mb-2 truncate text-xs text-navy-muted">
                 {session.email}
               </p>
