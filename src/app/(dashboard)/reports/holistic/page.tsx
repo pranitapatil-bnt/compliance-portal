@@ -14,10 +14,10 @@ export default function HolisticReportPage() {
         title="Holistic view"
         description="Search a client and open their 360° profile, payments, and checks."
       />
-      <p className="mb-4 rounded-xl border border-navy-line bg-navy-soft px-3 py-2 text-sm text-navy">
+      <p className="mb-4 rounded-2xl bg-[#e7f3fc] px-4 py-2.5 text-sm text-navy">
         UI only — client search is not connected yet.
       </p>
-      <form className="mb-6 flex flex-wrap gap-2 rounded-2xl border border-navy-line bg-white p-4">
+      <form className="mb-6 flex flex-wrap gap-2 rounded-2xl bg-white p-4 shadow-[0_10px_28px_rgba(15,40,70,0.06)]">
         <input
           type="search"
           placeholder="Client name, email, or account"

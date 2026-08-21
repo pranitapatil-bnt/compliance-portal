@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Header } from "@/components/layout/header";
+import { AppShell } from "@/components/layout/app-shell";
 import { routes } from "@/constants/routes";
 import { getSession } from "@/lib/auth/session";
 
@@ -16,12 +16,15 @@ export default async function DashboardLayout({
     redirect(routes.login);
   }
 
+  const today = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
-    <div className="flex min-h-screen flex-col bg-navy-wash">
-      <Header session={session} />
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6">
-        {children}
-      </main>
-    </div>
+    <AppShell session={session} today={today}>
+      {children}
+    </AppShell>
   );
 }

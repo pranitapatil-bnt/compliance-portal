@@ -8,7 +8,7 @@ export function LastUpdated() {
   );
 
   return (
-    <p className="rounded-full border border-navy-line bg-white px-3 py-1.5 text-sm text-navy-muted">
+    <p className="text-sm leading-relaxed text-navy-muted">
       Last updated @ {time}{" "}
       <button
         type="button"

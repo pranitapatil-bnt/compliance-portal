@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Card } from "@/components/ui/card";
 import { asRoute } from "@/lib/utils/routes";
 
 import type { AppRoute } from "@/constants/routes";
@@ -15,24 +16,60 @@ type KpiStripProps = {
   items: readonly KpiItem[];
 };
 
-export function KpiStrip({ items }: KpiStripProps) {
+function MailIcon() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {items.map((item) => (
-        <Link
-          key={item.href}
-          href={asRoute(item.href)}
-          className="relative flex flex-col gap-1 rounded-2xl border border-navy-line bg-white px-5 py-5 no-underline shadow-[0_8px_24px_rgba(46,26,122,0.06)] transition before:absolute before:inset-y-0 before:left-0 before:w-1 before:rounded-l-2xl before:bg-brand-gradient hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(46,26,122,0.1)]"
-        >
-          <span className="text-[11px] font-semibold tracking-[0.12em] text-navy-muted uppercase">
-            {item.label}
-          </span>
-          <span className="text-[1.75rem] leading-none font-semibold text-navy">
-            {item.value}
-          </span>
-          <span className="text-xs text-navy-muted">{item.hint}</span>
-        </Link>
-      ))}
-    </div>
+    <svg
+      className="size-5 text-[#3d8bd9]"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7l9 6 9-6" />
+    </svg>
+  );
+}
+
+export function KpiStrip({ items }: KpiStripProps) {
+  const primary = items[0];
+
+  return (
+    <Card className="flex h-full flex-col">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <h2 className="text-lg font-semibold text-navy">What&apos;s next</h2>
+        {primary ? (
+          <Link
+            href={asRoute(primary.href)}
+            className="inline-flex items-center rounded-lg bg-[#3d8bd9] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#3478bc]"
+          >
+            Review
+          </Link>
+        ) : null}
+      </div>
+      <ul className="flex flex-1 flex-col justify-center">
+        {items.map((item) => (
+          <li
+            key={item.href}
+            className="flex items-center gap-3 border-b border-slate-100 py-3 last:border-b-0 last:pb-0"
+          >
+            <span className="mt-0.5 size-1.5 shrink-0 rounded-full bg-[#3d8bd9]" />
+            <Link
+              href={asRoute(item.href)}
+              className="min-w-0 flex-1 hover:underline"
+            >
+              <span className="block text-sm font-medium text-navy">
+                {item.label}
+              </span>
+              <span className="block text-xs text-navy-muted">
+                {item.value} {item.hint}
+              </span>
+            </Link>
+            <MailIcon />
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }

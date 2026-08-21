@@ -13,11 +13,11 @@ export function WorkQueueScreen({
 }: WorkQueueScreenProps) {
   return (
     <div className="space-y-4">
-      <p className="rounded-xl border border-navy-line bg-navy-soft px-3 py-2 text-sm text-navy">
+      <p className="rounded-2xl bg-[#e7f3fc] px-4 py-2.5 text-sm text-navy">
         UI only — queues are not connected to the Java APIs yet.
       </p>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-navy-line bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_10px_28px_rgba(15,40,70,0.06)]">
         <p className="text-sm text-navy-muted">
           <strong className="font-semibold text-navy">0</strong> records
         </p>
@@ -54,9 +54,9 @@ export function WorkQueueScreen({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-navy-line bg-white">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_28px_rgba(15,40,70,0.06)]">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-navy-line bg-navy-wash text-xs font-semibold tracking-[0.08em] text-navy-muted uppercase">
+          <thead className="border-b border-slate-100 bg-[#f7fbfe] text-xs font-semibold tracking-[0.08em] text-navy-muted uppercase">
             <tr>
               {columns.map((column) => (
                 <th key={column} className="px-4 py-3 font-medium">
@@ -69,7 +69,9 @@ export function WorkQueueScreen({
             <tr>
               <td colSpan={columns.length} className="px-4 py-12 text-center">
                 <p className="text-sm font-medium text-navy">{emptyTitle}</p>
-                <p className="mt-1 text-sm text-navy-muted">{emptyDescription}</p>
+                <p className="mt-1 text-sm text-navy-muted">
+                  {emptyDescription}
+                </p>
               </td>
             </tr>
           </tbody>
