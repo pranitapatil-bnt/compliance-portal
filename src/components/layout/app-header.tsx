@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { demoCredentials } from "@/constants/auth";
 import { routes } from "@/constants/routes";
 import type { Session } from "@/lib/auth/types";
 
@@ -16,14 +15,14 @@ type AppHeaderProps = {
   onMenu: () => void;
 };
 
-function displayName(email: string) {
-  if (email === demoCredentials.username) {
-    return demoCredentials.displayName;
+function displayName(session: Session) {
+  if (session.name.trim()) {
+    return session.name;
   }
-  if (email.includes("@")) {
-    return email.split("@")[0] ?? email;
+  if (session.email.includes("@")) {
+    return session.email.split("@")[0] ?? session.email;
   }
-  return email.split(".").join(" ");
+  return session.username.replaceAll(".", " ");
 }
 
 function initials(name: string) {
@@ -35,7 +34,7 @@ function initials(name: string) {
 
 export function AppHeader({ session, today, onMenu }: AppHeaderProps) {
   const pathname = usePathname();
-  const name = displayName(session.email);
+  const name = displayName(session);
   const searchActive = pathname.startsWith(routes.reportsHolistic);
 
   return (

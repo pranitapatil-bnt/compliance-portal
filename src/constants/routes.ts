@@ -2,6 +2,7 @@ export const routes = {
   home: "/",
   login: "/login",
   logout: "/logout",
+  authLogin: "/api/auth/login",
   reg: "/reg",
   txnApi: "/txn-api",
   transactions: "/transactions",

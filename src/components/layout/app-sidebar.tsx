@@ -366,7 +366,7 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
           {settingsOpen ? (
             <div className="rounded-xl bg-navy-soft px-3 py-3 ring-1 ring-navy-line">
               <p className="mb-2 truncate text-xs text-navy-muted">
-                {session.email}
+                {session.name || session.username}
               </p>
               <SignOutButton email={session.email} compact />
             </div>

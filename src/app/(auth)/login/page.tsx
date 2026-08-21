@@ -12,11 +12,17 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{ error?: string; from?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const session = await getSession();
   if (session) {
     redirect(routes.home);
   }
+
+  const params = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-12">
@@ -43,7 +49,7 @@ export default async function LoginPage() {
               <h2 className="mb-6 text-lg font-semibold text-navy">
                 Sign in to your account
               </h2>
-              <LoginForm />
+              <LoginForm error={params.error} from={params.from} />
             </div>
           </div>
         </section>
