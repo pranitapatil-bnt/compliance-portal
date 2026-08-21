@@ -4,8 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
-import { appConfig } from "@/config/app";
-import { queueNav, reportNav } from "@/config/navigation";
+import { queueNav, reportNav, queuePaths, reportPaths } from "@/config/navigation";
 import { routes } from "@/constants/routes";
 import type { Session } from "@/lib/auth/types";
 import { cn } from "@/lib/utils/cn";
@@ -94,6 +93,24 @@ function SettingsIcon() {
   );
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={cn(
+        "ml-auto size-4 shrink-0 text-navy-muted transition-transform",
+        open && "rotate-180",
+      )}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
 function NavLink({
   href,
   label,
@@ -126,13 +143,69 @@ function NavLink({
   );
 }
 
+function ChildLink({
+  href,
+  label,
+  description,
+  active,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  description?: string;
+  active: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href={asRoute(href)}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "block rounded-lg py-1.5 pr-2 pl-10 hover:bg-navy-wash",
+        active && "bg-[#e7f3fc]",
+      )}
+    >
+      <span
+        className={cn(
+          "block text-sm text-navy-muted",
+          active && "font-medium text-[#2f7fd4]",
+        )}
+      >
+        {label}
+      </span>
+      {description ? (
+        <span className="mt-0.5 block text-[11px] leading-snug text-navy-muted/80">
+          {description}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+function isQueueItemActive(pathname: string, href: string) {
+  if (href === routes.transactions) {
+    return ["/transactions", "/payment-in", "/payment-out"].some((path) =>
+      isActivePath(pathname, path),
+    );
+  }
+  return isActivePath(pathname, href);
+}
+
 export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
   const pathname = usePathname();
   const dashboardActive = pathname === routes.home;
-  const reports = [...reportNav.search, ...reportNav.insights];
-  const reportsActive = reports.some((item) =>
-    isActivePath(pathname, item.href),
+  const queuesActive = queuePaths.some((path) =>
+    path === routes.transactions
+      ? ["/transactions", "/payment-in", "/payment-out"].some((item) =>
+          isActivePath(pathname, item),
+        )
+      : isActivePath(pathname, path),
   );
+  const reportsActive = reportPaths.some((path) =>
+    isActivePath(pathname, path),
+  );
+  const [queuesOpen, setQueuesOpen] = useState(queuesActive);
   const [reportsOpen, setReportsOpen] = useState(reportsActive);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -149,19 +222,16 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[220px] flex-col overflow-y-auto bg-white px-4 pt-8 pb-5 shadow-[4px_0_24px_rgba(15,40,70,0.04)] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col overflow-y-auto bg-white px-4 pt-8 pb-5 shadow-[4px_0_24px_rgba(15,40,70,0.04)] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
         )}
       >
         <Link
           href={routes.home}
-          className="mb-8 flex flex-col items-center gap-2 px-2 pt-2"
+          className="mb-8 flex items-center justify-center px-2 pt-2"
           onClick={onClose}
         >
           <BtLogo className="h-14 w-auto" />
-          <span className="text-sm font-semibold text-navy">
-            {appConfig.name}
-          </span>
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1" aria-label="Primary">
@@ -172,25 +242,33 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
             active={dashboardActive}
             onClick={onClose}
           />
-          {queueNav.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={<QueueIcon />}
-              active={
-                item.href === routes.transactions
-                  ? ["/transactions", "/payment-in", "/payment-out"].some(
-                      (path) => isActivePath(pathname, path),
-                    )
-                  : isActivePath(pathname, item.href)
-              }
-              onClick={onClose}
-            />
-          ))}
-        </nav>
 
-        <div className="mt-4 flex flex-col gap-1">
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy-muted hover:bg-navy-wash hover:text-navy",
+              queuesActive && "bg-[#e7f3fc] text-[#2f7fd4]",
+            )}
+            aria-expanded={queuesOpen}
+            onClick={() => setQueuesOpen((value) => !value)}
+          >
+            <QueueIcon />
+            Queues
+            <ChevronIcon open={queuesOpen} />
+          </button>
+          {queuesOpen
+            ? queueNav.map((item) => (
+                <ChildLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  description={item.description}
+                  active={isQueueItemActive(pathname, item.href)}
+                  onClick={onClose}
+                />
+              ))
+            : null}
+
           <button
             type="button"
             className={cn(
@@ -202,24 +280,39 @@ export function AppSidebar({ session, open, onClose }: AppSidebarProps) {
           >
             <ReportIcon />
             Reports
+            <ChevronIcon open={reportsOpen} />
           </button>
-          {reportsOpen
-            ? reports.map((item) => (
-                <Link
+          {reportsOpen ? (
+            <>
+              <p className="px-3 pt-2 pb-1 pl-10 text-[10px] font-semibold tracking-[0.12em] text-navy-muted uppercase">
+                Search & history
+              </p>
+              {reportNav.search.map((item) => (
+                <ChildLink
                   key={item.href}
-                  href={asRoute(item.href)}
+                  href={item.href}
+                  label={item.label}
+                  active={isActivePath(pathname, item.href)}
                   onClick={onClose}
-                  className={cn(
-                    "rounded-lg py-1.5 pr-2 pl-10 text-sm text-navy-muted hover:text-navy",
-                    isActivePath(pathname, item.href) &&
-                      "font-medium text-[#2f7fd4]",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))
-            : null}
+                />
+              ))}
+              <p className="px-3 pt-2 pb-1 pl-10 text-[10px] font-semibold tracking-[0.12em] text-navy-muted uppercase">
+                Insights
+              </p>
+              {reportNav.insights.map((item) => (
+                <ChildLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  active={isActivePath(pathname, item.href)}
+                  onClick={onClose}
+                />
+              ))}
+            </>
+          ) : null}
+        </nav>
 
+        <div className="mt-4 flex flex-col gap-1">
           <button
             type="button"
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-navy-muted hover:bg-navy-wash hover:text-navy"
