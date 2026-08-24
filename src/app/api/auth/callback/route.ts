@@ -3,8 +3,10 @@ import type { NextRequest } from "next/server";
 
 import { OIDC_COOKIE_NAME } from "@/constants/auth";
 import { routes } from "@/constants/routes";
+import { openPortalSession } from "@/lib/api/portal-session";
 import { exchangeKeycloakCode, sessionFromTokens } from "@/lib/auth/keycloak";
 import {
+  applyPortalCookie,
   applySessionCookie,
   clearAuthCookies,
   clearOidcCookie,
@@ -47,12 +49,17 @@ export async function GET(request: NextRequest) {
   try {
     const tokens = await exchangeKeycloakCode(code, oidc.codeVerifier);
     const record = sessionFromTokens(tokens, oidc.nonce);
+    const jsessionId = await openPortalSession(record);
     const response = NextResponse.redirect(new URL(oidc.from, request.url));
     applySessionCookie(response, record);
     clearOidcCookie(response);
+    if (jsessionId) {
+      applyPortalCookie(response, record.username, jsessionId);
+    }
     logger.info("User signed in", {
       userId: record.userId,
       username: record.username,
+      portalSession: Boolean(jsessionId),
     });
     return response;
   } catch (error) {

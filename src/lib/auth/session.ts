@@ -8,6 +8,8 @@ import { env } from "@/config/env";
 import {
   OIDC_COOKIE_NAME,
   OIDC_MAX_AGE_SECONDS,
+  PORTAL_COOKIE_NAME,
+  PORTAL_SESSION_MAX_AGE_SECONDS,
   SESSION_COOKIE_NAME,
   SESSION_MAX_AGE_SECONDS,
   TOKENS_COOKIE_NAME,
@@ -40,6 +42,19 @@ const oidcCookieOptions = {
   sameSite: "lax" as const,
   path: "/",
   maxAge: OIDC_MAX_AGE_SECONDS,
+};
+
+const portalCookieOptions = {
+  httpOnly: true,
+  secure: env.isProduction,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: PORTAL_SESSION_MAX_AGE_SECONDS,
+};
+
+export type PortalCookie = {
+  username: string;
+  jsessionId: string;
 };
 
 function sign(value: string): string {
@@ -160,6 +175,35 @@ export function readOidcCookie(raw: string | undefined): OidcCookie | null {
   return parseOidcCookie(decodeJson(raw));
 }
 
+function parsePortalCookie(value: unknown): PortalCookie | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const username = readString(value.username);
+  const jsessionId = readString(value.jsessionId);
+  const exp = typeof value.exp === "number" ? value.exp : 0;
+
+  if (!username || !jsessionId || exp < Date.now()) {
+    return null;
+  }
+
+  return { username, jsessionId };
+}
+
+export function readPortalCookie(raw: string | undefined): PortalCookie | null {
+  if (!raw) {
+    return null;
+  }
+
+  return parsePortalCookie(decodeJson(raw));
+}
+
+export async function getPortalCookie(): Promise<PortalCookie | null> {
+  const store = await cookies();
+  return readPortalCookie(store.get(PORTAL_COOKIE_NAME)?.value);
+}
+
 export function readSessionRecord(
   raw: string | undefined,
 ): SessionRecord | null {
@@ -261,6 +305,37 @@ export function clearOidcCookie(response: NextResponse): void {
   });
 }
 
+export function encodePortalCookieValue(
+  username: string,
+  jsessionId: string,
+): string {
+  return encodeJson({
+    username,
+    jsessionId,
+    exp: Date.now() + PORTAL_SESSION_MAX_AGE_SECONDS * 1000,
+  });
+}
+
+export function applyPortalCookie(
+  response: NextResponse,
+  username: string,
+  jsessionId: string,
+): void {
+  response.cookies.set(
+    PORTAL_COOKIE_NAME,
+    encodePortalCookieValue(username, jsessionId),
+    portalCookieOptions,
+  );
+}
+
+export function clearPortalCookie(response: NextResponse): void {
+  response.cookies.set(PORTAL_COOKIE_NAME, "", {
+    ...portalCookieOptions,
+    maxAge: 0,
+    expires: new Date(0),
+  });
+}
+
 export function clearAuthCookies(response: NextResponse): void {
   response.cookies.set(SESSION_COOKIE_NAME, "", {
     ...sessionCookieOptions,
@@ -273,6 +348,7 @@ export function clearAuthCookies(response: NextResponse): void {
     expires: new Date(0),
   });
   clearOidcCookie(response);
+  clearPortalCookie(response);
 }
 
 export async function clearSession(): Promise<void> {
@@ -289,6 +365,11 @@ export async function clearSession(): Promise<void> {
   });
   store.set(OIDC_COOKIE_NAME, "", {
     ...oidcCookieOptions,
+    maxAge: 0,
+    expires: new Date(0),
+  });
+  store.set(PORTAL_COOKIE_NAME, "", {
+    ...portalCookieOptions,
     maxAge: 0,
     expires: new Date(0),
   });

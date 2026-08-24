@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { WorkQueueScreen } from "@/components/shared/work-queue-screen";
-import { onboardingColumns } from "@/constants/screens";
+import { OnboardingQueueScreen } from "@/features/queues/components/onboarding-queue-screen";
 import { getHolisticSearch } from "@/features/queues/services/queue-service";
 import { readQueueQuery } from "@/features/queues/search-body";
 import type { QueueSearchParams } from "@/features/queues/types";
@@ -29,11 +28,9 @@ export default async function HolisticReportPage({
         title="Holistic view"
         description="Search a client and open their 360° profile, payments, and checks."
       />
-      <WorkQueueScreen
-        columns={onboardingColumns}
+      <OnboardingQueueScreen
         result={result}
-        keyword={query.keyword}
-        status={query.status}
+        query={query}
         emptyTitle={hasSearch ? "No matching clients" : "No client selected"}
         emptyDescription={
           hasSearch

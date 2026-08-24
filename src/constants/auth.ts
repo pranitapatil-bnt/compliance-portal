@@ -1,9 +1,11 @@
 export const SESSION_COOKIE_NAME = "cp_session";
 export const TOKENS_COOKIE_NAME = "cp_tokens";
 export const OIDC_COOKIE_NAME = "cp_oidc";
+export const PORTAL_COOKIE_NAME = "cp_portal";
 
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 export const OIDC_MAX_AGE_SECONDS = 60 * 10;
+export const PORTAL_SESSION_MAX_AGE_SECONDS = 25 * 60;
 
 export const authErrors = {
   not_configured: "Sign-in is not set up. Ask an admin to configure Keycloak.",

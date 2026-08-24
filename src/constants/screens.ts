@@ -1,11 +1,31 @@
 export const onboardingColumns = [
   "Date",
-  "Client",
+  "Client name",
   "Type",
-  "Country",
-  "Org",
-  "Status",
+  "Country of Residence",
+  "Organization",
+  "N/U",
+  "Onboarding Date",
+  "Transaction value",
+  "E",
+  "F",
+  "S",
+  "B",
+  "C",
 ] as const;
+
+export const onboardingCheckColumns = ["E", "F", "S", "B", "C"] as const;
+
+export const onboardingCheckHints: Record<
+  (typeof onboardingCheckColumns)[number],
+  string
+> = {
+  E: "EID",
+  F: "FraudPredict",
+  S: "Sanction",
+  B: "Blacklist",
+  C: "CustomCheck",
+};
 
 export const transactionColumns = [
   "Payment ID",

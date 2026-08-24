@@ -1,5 +1,6 @@
 import { WorkQueueScreen } from "@/components/shared/work-queue-screen";
 
+import { OnboardingQueueScreen } from "./onboarding-queue-screen";
 import { readQueueQuery } from "../search-body";
 import type { QueueQuery, QueueResult, QueueSearchParams } from "../types";
 
@@ -11,6 +12,7 @@ type QueuePageBodyProps = {
   emptyDescription: string;
   showExport?: boolean;
   fromReport?: boolean;
+  variant?: "default" | "onboarding";
 };
 
 export async function QueuePageBody({
@@ -21,10 +23,22 @@ export async function QueuePageBody({
   emptyDescription,
   showExport = false,
   fromReport = false,
+  variant = "default",
 }: QueuePageBodyProps) {
   const params = await searchParams;
   const query = readQueueQuery(params, { fromReport });
   const result = await load(query);
+
+  if (variant === "onboarding") {
+    return (
+      <OnboardingQueueScreen
+        result={result}
+        query={query}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+      />
+    );
+  }
 
   return (
     <WorkQueueScreen

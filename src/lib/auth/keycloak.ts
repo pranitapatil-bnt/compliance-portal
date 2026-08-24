@@ -3,6 +3,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 
 import { env, isKeycloakLoginConfigured } from "@/config/env";
+import { logger } from "@/lib/logger";
 import { readString } from "@/lib/utils/guards";
 
 import { decodeJwtPayload, readStringList } from "./jwt";
@@ -247,38 +248,104 @@ export async function refreshKeycloakTokens(
   return payload;
 }
 
+type TokenExchangeClient = {
+  id: string;
+  secret?: string;
+};
+
+function exchangeClients(): TokenExchangeClient[] {
+  const clients: TokenExchangeClient[] = [
+    {
+      id: env.keycloak.portalClientId,
+      secret: env.keycloak.portalClientSecret,
+    },
+  ];
+
+  if (
+    env.keycloak.apiClientId &&
+    env.keycloak.apiClientId !== env.keycloak.portalClientId
+  ) {
+    clients.push({
+      id: env.keycloak.apiClientId,
+      secret: env.keycloak.apiClientSecret,
+    });
+  }
+
+  return clients;
+}
+
+function exchangeAudiences(): Array<string | undefined> {
+  return [
+    "compliance-portal",
+    env.keycloak.portalClientId,
+    env.keycloak.issuer?.replace(/\/$/, ""),
+    undefined,
+  ];
+}
+
 export async function exchangeAccessTokenForSaml(
   accessToken: string,
+  options: { refreshToken?: string } = {},
 ): Promise<string | null> {
-  const body = new URLSearchParams({
-    grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
-    subject_token: accessToken,
-    subject_token_type: "urn:ietf:params:oauth:token-type:access_token",
-    requested_token_type: "urn:ietf:params:oauth:token-type:saml2",
-    client_id: env.keycloak.portalClientId,
-    audience: "compliance-portal",
-  });
-
-  if (env.keycloak.portalClientSecret) {
-    body.set("client_secret", env.keycloak.portalClientSecret);
-  }
-
-  const response = await fetch(keycloakTokenUrl(), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
+  const subjects: Array<{ token: string; type: string }> = [
+    {
+      token: accessToken,
+      type: "urn:ietf:params:oauth:token-type:access_token",
     },
-    body,
-    cache: "no-store",
-  });
-
-  const payload = (await response.json()) as TokenResponse & {
-    issued_token_type?: string;
-  };
-  if (!response.ok || !payload.access_token) {
-    return null;
+  ];
+  if (options.refreshToken) {
+    subjects.push({
+      token: options.refreshToken,
+      type: "urn:ietf:params:oauth:token-type:refresh_token",
+    });
   }
 
-  return payload.access_token;
+  let lastError = "token exchange failed";
+
+  for (const client of exchangeClients()) {
+    for (const audience of exchangeAudiences()) {
+      for (const subject of subjects) {
+        const body = new URLSearchParams({
+          grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+          subject_token: subject.token,
+          subject_token_type: subject.type,
+          requested_token_type: "urn:ietf:params:oauth:token-type:saml2",
+          client_id: client.id,
+        });
+        if (client.secret) {
+          body.set("client_secret", client.secret);
+        }
+        if (audience) {
+          body.set("audience", audience);
+        }
+
+        const response = await fetch(keycloakTokenUrl(), {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body,
+          cache: "no-store",
+        });
+
+        const payload = (await response.json()) as TokenResponse;
+        if (response.ok && payload.access_token) {
+          return payload.access_token;
+        }
+
+        lastError = payload.error_description ?? payload.error ?? lastError;
+        if (
+          response.status === 501 ||
+          payload.error === "Feature not enabled"
+        ) {
+          logger.warn("Keycloak SAML token exchange is not enabled");
+          return null;
+        }
+      }
+    }
+  }
+
+  logger.warn("Keycloak SAML token exchange failed", lastError);
+  return null;
 }

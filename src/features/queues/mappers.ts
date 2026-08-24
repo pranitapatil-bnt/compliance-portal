@@ -86,21 +86,87 @@ function rowId(row: Record<string, unknown>, fallback: string): string {
   );
 }
 
+function checkCell(value: unknown): string {
+  const text = readString(value)?.trim();
+  return text && text.length > 0 ? text.toUpperCase() : "FAIL";
+}
+
+function onboardingDateCell(value: unknown): string {
+  const text = readString(value)?.trim();
+  return text && text.length > 0 ? text : "------";
+}
+
+function isLocked(value: unknown): boolean {
+  return value === true || value === "true";
+}
+
+function readStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item) => item.length > 0);
+}
+
+function firstText(...values: unknown[]): string {
+  for (const value of values) {
+    const text = readString(value)?.trim();
+    if (text) {
+      return text;
+    }
+  }
+  return "";
+}
+
+function currentUserName(payload: unknown): string | undefined {
+  if (!isRecord(payload) || !isRecord(payload.user)) {
+    return undefined;
+  }
+  return readString(payload.user.name) ?? readString(payload.user.userName);
+}
+
 export function mapRegistrationQueue(payload: unknown): QueueResult {
+  const userName = currentUserName(payload);
   const rows = asRecordList(
     isRecord(payload) ? payload.registrationQueue : payload,
-  ).map((row, index) => ({
-    id: rowId(row, `reg-${index}`),
-    cells: [
-      cell(row.registeredOn ?? row.registeredDate),
-      cell(row.contactName),
-      cell(row.type),
-      cell(row.countryOfResidence),
-      cell(row.organisation ?? row.organization),
-      cell(row.complianceStatus ?? row.dataAnonStatus),
-    ],
-  }));
-  return asQueue(payload, rows);
+  ).map((row, index) => {
+    const contactId = idPart(row.contactId);
+    const type = firstText(row.type) || "PERSONAL";
+    const locked = isLocked(row.locked);
+    const lockedBy = readString(row.lockedBy);
+    return {
+      id: rowId(row, `reg-${index}`),
+      contactId,
+      type,
+      href: contactId
+        ? `/reg/${contactId}?type=${encodeURIComponent(type)}`
+        : undefined,
+      locked,
+      owned: Boolean(locked && lockedBy && userName && lockedBy === userName),
+      lockedBy,
+      cells: [
+        cell(row.registeredOn),
+        cell(row.contactName),
+        cell(row.type),
+        cell(row.countryOfResidence),
+        cell(firstText(row.organisation, row.organization)),
+        cell(row.newOrUpdated),
+        onboardingDateCell(row.registeredDate),
+        cell(row.transactionValue),
+        checkCell(firstText(row.eidCheck, row.kycStatus)),
+        checkCell(row.fraugster),
+        checkCell(row.sanction),
+        checkCell(row.blacklist),
+        checkCell(row.customCheck),
+      ],
+    };
+  });
+  const result = asQueue(payload, rows);
+  result.organizations = isRecord(payload)
+    ? readStringList(payload.organization)
+    : [];
+  return result;
 }
 
 export function mapPaymentInQueue(payload: unknown): QueueResult {

@@ -12,4 +12,5 @@ export const portalPaths = {
   paymentOutReport: "/paymentOutReportCriteria",
   workEfficiency: "/workEfficiencyReport",
   beneReport: "/beneReportApply",
+  registrationDetails: "/registrationDetails",
 } as const;

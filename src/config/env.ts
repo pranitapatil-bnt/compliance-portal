@@ -27,6 +27,7 @@ export const env = {
   apiBaseUrl: readEnv("API_BASE_URL"),
   complianceApiBase: readEnv("COMPLIANCE_API_BASE"),
   portalJsessionId: readEnv("PORTAL_JSESSIONID"),
+  portalSsoUsername: readEnv("PORTAL_SSO_USERNAME") ?? "ethos.comp.system",
   portalSsoPassword: readEnv("PORTAL_SSO_PASSWORD"),
   sessionSecret: readEnv("SESSION_SECRET") ?? "dev-only-change-me",
   isProduction: process.env.NODE_ENV === "production",

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { routes } from "@/constants/routes";
+import { PortalSessionSync } from "@/features/auth/components/portal-session-sync";
 import { getSession } from "@/lib/auth/session";
 
 export default async function DashboardLayout({
@@ -24,6 +25,7 @@ export default async function DashboardLayout({
 
   return (
     <AppShell session={session} today={today}>
+      <PortalSessionSync />
       {children}
     </AppShell>
   );

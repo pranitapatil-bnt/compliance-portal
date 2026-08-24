@@ -17,16 +17,14 @@ export default function OnboardingQueuePage({
 }) {
   return (
     <>
-      <PageHeader
-        title="Onboarding"
-        description="Clients who failed compliance checks at registration."
-      />
+      <PageHeader title="Onboarding queue" />
       <QueuePageBody
         searchParams={searchParams}
         load={getRegistrationQueue}
         columns={onboardingColumns}
         emptyTitle="No onboarding cases"
         emptyDescription="Failed registrations will appear here from /regQueue."
+        variant="onboarding"
       />
     </>
   );
