@@ -151,11 +151,7 @@ function looksLikeLoginPage(text: string): boolean {
 }
 
 function portalRoot(): string {
-  const base = readPortalApiBase();
-  if (!base) {
-    throw new Error("COMPLIANCE_API_BASE is not configured");
-  }
-  return base;
+  return readPortalApiBase();
 }
 
 function readJsessionId(jar: HostCookieJar): string | null {
@@ -221,7 +217,15 @@ async function verifyPortalSession(jsessionId: string): Promise<boolean> {
       Cookie: `JSESSIONID=${jsessionId}`,
     },
     body: JSON.stringify({
-      filter: {},
+      filter: {
+        keyword: null,
+        status: null,
+        custType: null,
+        organization: null,
+        legalEntity: null,
+        dateFrom: null,
+        dateTo: null,
+      },
       page: {
         currentPage: 1,
         minRecord: 1,
@@ -230,6 +234,8 @@ async function verifyPortalSession(jsessionId: string): Promise<boolean> {
         totalPages: 0,
       },
       isFilterApply: false,
+      isRequestFromReportPage: false,
+      custType: null,
     }),
     redirect: "manual",
     cache: "no-store",

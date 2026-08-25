@@ -81,7 +81,7 @@ export async function proxyCompliance(
         ? await portalApiGet(path, options)
         : await portalApiPost(path, payload, options);
 
-    const upstream = `${readPortalApiBase() ?? ""}${path}`;
+    const upstream = `${readPortalApiBase()}${path}`;
     const response = NextResponse.json(data ?? null);
     response.headers.set("X-Upstream-Url", upstream);
     return response;

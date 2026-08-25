@@ -255,7 +255,11 @@ export const compliancePath = {
   transactionQueue: "/transactionQueue",
   txnApiQueue: "/txnApiQueue",
   txnApiReport: "/txnApiReport",
+  txnApiDetail: "/txnApiDetail",
   dataAnonQueue: "/dataAnonQueue",
+  registrationDetails: "/registrationDetails",
+  paymentInDetail: "/paymentInDetail",
+  paymentOutDetail: "/paymentOutDetail",
   regReportCriteria: "/regReportCriteria",
   paymentInReportCriteria: "/paymentInReportCriteria",
   paymentOutReportCriteria: "/paymentOutReportCriteria",
@@ -265,4 +269,20 @@ export const compliancePath = {
   organizations: "/organizations",
   legalEntities: "/legalEntities",
   currencies: "/currencies",
+  velocityRules: "/velocityRules",
 } as const;
+
+export function withQuery(
+  path: string,
+  params: Record<string, string | number | boolean | null | undefined>,
+): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === "") {
+      continue;
+    }
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query.length > 0 ? `${path}?${query}` : path;
+}

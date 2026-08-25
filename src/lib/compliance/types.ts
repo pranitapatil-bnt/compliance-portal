@@ -71,6 +71,8 @@ export type RegistrationQueueItem = {
   blacklist: string | null;
   customCheck: string | null;
   contactId: number | null;
+  clientId: string | null;
+  overallStatus: string | null;
   accountId: number | null;
   userResourceLockId: number | null;
   locked: boolean;

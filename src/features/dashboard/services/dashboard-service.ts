@@ -64,10 +64,10 @@ async function loadQueueFallback(error?: string): Promise<{
 }> {
   const [personalQueue, corporateQueue, inwardQueue, outwardQueue] =
     await Promise.all([
-      getRegistrationQueue({ custType: "PERSONAL" }),
-      getRegistrationQueue({ custType: "CORPORATE" }),
-      getPaymentInQueue(),
-      getPaymentOutQueue(),
+      getRegistrationQueue({ custType: "PERSONAL", maxRecord: 1 }),
+      getRegistrationQueue({ custType: "CORPORATE", maxRecord: 1 }),
+      getPaymentInQueue({ maxRecord: 1 }),
+      getPaymentOutQueue({ maxRecord: 1 }),
     ]);
 
   return {

@@ -89,6 +89,8 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
   const custType = query.custType?.trim() || undefined;
   const direction = query.direction?.trim() || undefined;
   const hasDirection = Boolean(direction && direction !== "ALL");
+  const maxRecord =
+    query.maxRecord && query.maxRecord > 0 ? query.maxRecord : 50;
   const isFilterApply = Boolean(
     keyword ||
     statuses?.length ||
@@ -102,7 +104,6 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
     sanctionStatus ||
     blacklistStatus ||
     customCheckStatus ||
-    custType ||
     hasDirection,
   );
 
@@ -151,10 +152,10 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
     page: {
       currentPage: 1,
       minRecord: 1,
-      maxRecord: 50,
+      maxRecord,
       totalRecords: 0,
       totalPages: 0,
-      pageSize: 50,
+      pageSize: maxRecord,
       currentRecord: null,
     },
     isFilterApply,

@@ -35,6 +35,7 @@ export type QueueQuery = {
   custType?: string;
   direction?: string;
   fromReport?: boolean;
+  maxRecord?: number;
 };
 
 export type QueueSearchParams = {

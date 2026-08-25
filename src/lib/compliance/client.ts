@@ -1,9 +1,14 @@
 import "server-only";
 
-import { portalApiGet, portalApiHtml, portalApiPost } from "@/lib/api/client";
+import {
+  portalApiGet,
+  portalApiHtml,
+  portalApiPost,
+  portalApiPostHtml,
+} from "@/lib/api/client";
 import type { PortalCallOptions } from "@/lib/api/client";
 
-import { compliancePath } from "./paths";
+import { compliancePath, withQuery } from "./paths";
 import { withQueueDefaults } from "./search";
 import type {
   AccountHistoryRequest,
@@ -84,6 +89,62 @@ function queueBody(body?: Partial<QueueSearchRequest> | null) {
 export const complianceApi = {
   dashboardPage: (options?: CallOptions) =>
     portalApiHtml(compliancePath.dashboard, options),
+  registrationDetailsPage: (
+    query: {
+      contactId: string | number;
+      custType?: string;
+      source?: string;
+      searchCriteria?: string;
+    },
+    options?: CallOptions,
+  ) =>
+    portalApiPostHtml(
+      withQuery(compliancePath.registrationDetails, {
+        contactId: query.contactId,
+        custType: query.custType ?? "PERSONAL",
+        source: query.source ?? "QUEUE",
+        searchCriteria: query.searchCriteria,
+      }),
+      options,
+    ),
+  paymentInDetailPage: (
+    query: {
+      paymentInId: string | number;
+      custType?: string;
+      source?: string;
+    },
+    options?: CallOptions,
+  ) =>
+    portalApiPostHtml(
+      withQuery(compliancePath.paymentInDetail, {
+        paymentInId: query.paymentInId,
+        custType: query.custType ?? "PERSONAL",
+        source: query.source ?? "QUEUE",
+      }),
+      options,
+    ),
+  paymentOutDetailPage: (
+    query: { paymentOutId: string | number; source?: string },
+    options?: CallOptions,
+  ) =>
+    portalApiPostHtml(
+      withQuery(compliancePath.paymentOutDetail, {
+        paymentOutId: query.paymentOutId,
+        source: query.source ?? "QUEUE",
+      }),
+      options,
+    ),
+  txnApiDetailPage: (
+    query: { transactionId: string; source?: string },
+    options?: CallOptions,
+  ) =>
+    portalApiPostHtml(
+      withQuery(compliancePath.txnApiDetail, {
+        transactionId: query.transactionId,
+        source: query.source ?? "QUEUE",
+      }),
+      options,
+    ),
   organizations: (options?: CallOptions) =>
     getJson<OrganizationDto[]>(compliancePath.organizations, options),
   legalEntities: (options?: CallOptions) =>
@@ -91,7 +152,7 @@ export const complianceApi = {
   currencies: (options?: CallOptions) =>
     getJson<CurrencyDto[]>(compliancePath.currencies, options),
   velocityRules: (options?: CallOptions) =>
-    getJson<VelocityRuleDto[]>("/velocityRules", options),
+    getJson<VelocityRuleDto[]>(compliancePath.velocityRules, options),
   showCountReprocessFailed: (batchId: number | string, options?: CallOptions) =>
     getJson<string>(`/showCountReprocessFailed?batchId=${batchId}`, options),
   clearReprocessFailed: (options?: CallOptions) =>

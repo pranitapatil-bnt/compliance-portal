@@ -15,6 +15,8 @@ function issuerFromTokenUrl(tokenUrl: string | undefined): string | undefined {
   return index === -1 ? undefined : tokenUrl.slice(0, index);
 }
 
+const DEFAULT_PORTAL_API_BASE = "http://172.31.2.23:8080/compliance-portal";
+
 const keycloakTokenUrl = readEnv("KEYCLOAK_TOKEN_URL");
 const keycloakIssuer =
   readEnv("KEYCLOAK_ISSUER") ?? issuerFromTokenUrl(keycloakTokenUrl);
@@ -44,11 +46,9 @@ export const env = {
 } as const;
 
 /** Java portal JSON API root. Cookie auth (JSESSIONID), not Bearer JWT. */
-export function readPortalApiBase(): string | undefined {
-  const raw = env.complianceApiBase ?? env.apiBaseUrl;
-  if (!raw) {
-    return undefined;
-  }
+export function readPortalApiBase(): string {
+  const raw =
+    env.complianceApiBase ?? env.apiBaseUrl ?? DEFAULT_PORTAL_API_BASE;
 
   try {
     const url = new URL(raw);
@@ -59,7 +59,7 @@ export function readPortalApiBase(): string | undefined {
     }
     return `${origin}${path}`;
   } catch {
-    return raw.replace(/\/$/, "");
+    return raw.replace(/\/$/, "") || DEFAULT_PORTAL_API_BASE;
   }
 }
 

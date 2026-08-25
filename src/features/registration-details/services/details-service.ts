@@ -1,8 +1,6 @@
 import "server-only";
 
-import { portalPaths } from "@/features/queues/paths";
 import { buildQueueSearch } from "@/features/queues/search-body";
-import { portalApiForm } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
 import { complianceApi } from "@/lib/compliance/client";
 import { logger } from "@/lib/logger";
@@ -123,11 +121,10 @@ export async function getRegistrationDetails(
   };
 
   try {
-    const html = await portalApiForm(portalPaths.registrationDetails, {
+    const html = await complianceApi.registrationDetailsPage({
       contactId,
       custType,
-      source: "queue",
-      searchCriteria: "",
+      source: "QUEUE",
     });
     const details = mergeDetails(
       parseRegistrationDetailsHtml(html),

@@ -26,25 +26,30 @@ const LOGIN_HINT =
 
 export const PORTAL_SESSION_EXPIRED = LOGIN_HINT;
 
-function looksLikeLoginPage(text: string): boolean {
-  const sample = text.slice(0, 800).toLowerCase();
-  return (
-    sample.includes("samlrequest") ||
-    sample.includes("kc-form-login") ||
-    sample.includes("sign in to") ||
-    sample.includes("<html") ||
-    sample.includes("forbidden") ||
-    (sample.includes("keycloak") && sample.includes("password"))
-  );
-}
-
 function looksLikeAuthChallenge(text: string): boolean {
   const sample = text.slice(0, 2000).toLowerCase();
   return (
     sample.includes("samlrequest") ||
     sample.includes("kc-form-login") ||
     sample.includes("sign in to ethos") ||
-    sample.includes("sign in to")
+    sample.includes("sign in to") ||
+    (sample.includes("keycloak") && sample.includes("password"))
+  );
+}
+
+function looksLikeLoginPage(text: string): boolean {
+  return looksLikeAuthChallenge(text);
+}
+
+function isJsonLiteral(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[") ||
+    trimmed === "true" ||
+    trimmed === "false" ||
+    trimmed === "null" ||
+    /^-?\d+(\.\d+)?$/.test(trimmed)
   );
 }
 
@@ -63,7 +68,7 @@ function parseBody(status: number, contentType: string, text: string): unknown {
   }
 
   const trimmed = text.trim();
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+  if (isJsonLiteral(trimmed)) {
     try {
       return parseJson(trimmed);
     } catch {
@@ -193,11 +198,7 @@ export type PortalCallOptions = {
 };
 
 function requirePortalBase(): string {
-  const base = readPortalApiBase();
-  if (!base) {
-    throw new ApiError("COMPLIANCE_API_BASE is not configured", 500);
-  }
-  return base;
+  return readPortalApiBase();
 }
 
 async function withPortalRetry<T>(
@@ -234,12 +235,13 @@ function portalRequest(
   options: RequestOptions & PortalCallOptions = {},
 ): Promise<unknown> {
   const { cookie: cookieOverride, ...requestOptions } = options;
+  const isPost = method === "POST";
   return withPortalRetry(
     (cookie) =>
       request(method, path, {
         ...requestOptions,
         ajax: true,
-        json: true,
+        json: isPost,
         redirect: "manual",
         cookie,
         baseUrl: requirePortalBase(),
@@ -322,7 +324,7 @@ export async function portalApiForm(
     if (isRedirectStatus(response.status)) {
       throw new ApiError(LOGIN_HINT, 401);
     }
-    if (looksLikeLoginPage(response.text) || response.status === 401) {
+    if (looksLikeAuthChallenge(response.text) || response.status === 401) {
       throw new ApiError(LOGIN_HINT, 401);
     }
     if (!response.ok) {
@@ -332,6 +334,41 @@ export async function portalApiForm(
   };
 
   return withPortalRetry(post);
+}
+
+export async function portalApiPostHtml(
+  path: string,
+  options: PortalCallOptions = {},
+): Promise<string> {
+  const baseUrl = requirePortalBase();
+
+  const post = async (cookie: string): Promise<string> => {
+    const headers: Record<string, string> = {
+      Accept: "text/html,application/xhtml+xml",
+      "X-Requested-With": "XMLHttpRequest",
+    };
+    if (cookie) {
+      headers.Cookie = cookie;
+    }
+
+    const response = await requestRaw(`${baseUrl}${path}`, {
+      method: "POST",
+      headers,
+    });
+
+    if (isRedirectStatus(response.status)) {
+      throw new ApiError(LOGIN_HINT, 401);
+    }
+    if (looksLikeAuthChallenge(response.text) || response.status === 401) {
+      throw new ApiError(LOGIN_HINT, 401);
+    }
+    if (!response.ok) {
+      throw new ApiError(`POST ${path} failed`, response.status);
+    }
+    return response.text;
+  };
+
+  return withPortalRetry(post, options.cookie);
 }
 
 export async function complianceApiGet(

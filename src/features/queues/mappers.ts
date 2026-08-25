@@ -151,7 +151,7 @@ export function mapRegistrationQueue(payload: unknown): QueueResult {
   const rows = asRecordList(
     isRecord(payload) ? payload.registrationQueue : payload,
   ).map((row, index) => {
-    const contactId = idPart(row.contactId);
+    const contactId = idPart(row.contactId) ?? idPart(row.clientId);
     const type = firstText(row.type) || "PERSONAL";
     const locked = isLocked(row.locked);
     const lockedBy = readString(row.lockedBy);
@@ -159,7 +159,7 @@ export function mapRegistrationQueue(payload: unknown): QueueResult {
     const accountId = idPart(row.accountId);
     const org = firstText(row.organisation, row.organization);
     const lockId = idPart(row.userResourceLockId);
-    const status = firstText(row.complianceStatus);
+    const status = firstText(row.complianceStatus, row.overallStatus);
     if (accountId) {
       params.set("accountId", accountId);
     }

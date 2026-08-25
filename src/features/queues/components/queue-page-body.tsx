@@ -31,7 +31,10 @@ export async function QueuePageBody({
   const query = readQueueQuery(params, { fromReport });
 
   if (variant === "onboarding") {
-    const organizations = await getOrganizationNames();
+    const [organizations, result] = await Promise.all([
+      getOrganizationNames(),
+      load(query),
+    ]);
     return (
       <OnboardingQueueScreen
         query={query}
@@ -40,6 +43,7 @@ export async function QueuePageBody({
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsOnboarding : routes.reg}
         endpoint={fromReport ? "reg-report-criteria" : "reg-queue"}
+        result={result}
       />
     );
   }
