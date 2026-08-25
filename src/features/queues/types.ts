@@ -1,4 +1,4 @@
-export type CheckStatus = "pass" | "fail" | "na";
+export type CheckStatus = "pass" | "fail" | "na" | "pending";
 
 export type QueueRow = {
   id: string;
@@ -32,7 +32,9 @@ export type QueueQuery = {
   sanctionStatus?: string;
   blacklistStatus?: string;
   customCheckStatus?: string;
+  watchListStatus?: string;
   custType?: string;
+  custTypes?: string[];
   direction?: string;
   fromReport?: boolean;
   maxRecord?: number;
@@ -51,5 +53,7 @@ export type QueueSearchParams = {
   sanctionStatus?: string | string[];
   blacklistStatus?: string | string[];
   customCheckStatus?: string | string[];
+  watchListStatus?: string | string[];
+  custType?: string | string[];
   direction?: string | string[];
 };

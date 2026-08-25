@@ -146,6 +146,30 @@ function currentUserName(payload: unknown): string | undefined {
   return readString(payload.user.name) ?? readString(payload.user.userName);
 }
 
+function directionCell(value: unknown): string {
+  const text = firstText(value);
+  const normalized = text.toUpperCase().replace(/[\s-]+/g, "_");
+  if (
+    normalized === "IN" ||
+    normalized === "INWARD" ||
+    normalized === "PAYIN" ||
+    normalized === "PAYMENT_IN" ||
+    normalized === "FUNDS_IN"
+  ) {
+    return "Inward";
+  }
+  if (
+    normalized === "OUT" ||
+    normalized === "OUTWARD" ||
+    normalized === "PAYOUT" ||
+    normalized === "PAYMENT_OUT" ||
+    normalized === "FUNDS_OUT"
+  ) {
+    return "Outward";
+  }
+  return text ? text : "—";
+}
+
 export function mapRegistrationQueue(payload: unknown): QueueResult {
   const userName = currentUserName(payload);
   const rows = asRecordList(
@@ -239,22 +263,52 @@ export function mapPaymentOutQueue(payload: unknown): QueueResult {
 }
 
 export function mapTransactionQueue(payload: unknown): QueueResult {
+  const userName = currentUserName(payload);
   const rows = asRecordList(
     isRecord(payload)
       ? (payload.transactionQueue ?? payload.transactions)
       : payload,
-  ).map((row, index) => ({
-    id: rowId(row, `txn-${index}`),
-    cells: [
-      cell(row.transactionId),
-      cell(row.date),
-      cell(row.contactName),
-      cell(row.directionLabel ?? row.direction),
-      cell(row.amount),
-      cell(row.overallStatus),
-    ],
-  }));
-  return asQueue(payload, rows);
+  ).map((row, index) => {
+    const locked = isLocked(row.locked);
+    const lockedBy = readString(row.lockedBy);
+    return {
+      id: rowId(row, `txn-${index}`),
+      locked,
+      owned: Boolean(locked && lockedBy && userName && lockedBy === userName),
+      lockedBy,
+      cells: [
+        cell(row.transactionId ?? row.recordId),
+        cell(row.date),
+        cell(row.contactName),
+        cell(row.type),
+        cell(firstText(row.organization, row.organisation)),
+        cell(firstText(row.currency, row.sellCurrency, row.buyCurrency)),
+        cell(row.amount),
+        cell(
+          firstText(
+            row.detail,
+            row.method,
+            row.beneficiary,
+            row.vendorGroup,
+            row.sender,
+          ),
+        ),
+        cell(firstText(row.country, row.countryFullName, row.isoCountry)),
+        cell(row.overallStatus),
+        directionCell(firstText(row.directionLabel, row.direction)),
+        checkCell(row.watchlist),
+        checkCell(row.fraugster),
+        checkCell(row.sanction),
+        checkCell(row.blacklist),
+        checkCell(row.customCheck),
+      ],
+    };
+  });
+  const result = asQueue(payload, rows);
+  result.organizations = isRecord(payload)
+    ? readOrgLabels(payload.organization)
+    : [];
+  return result;
 }
 
 export function mapTxnApiQueue(payload: unknown): QueueResult {

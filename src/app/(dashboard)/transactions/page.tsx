@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { paymentColumns } from "@/constants/screens";
+import { paymentsQueueColumns } from "@/constants/screens";
 import { QueuePageBody } from "@/features/queues";
 import { getTransactionQueue } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   title: "Payments queue",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function PaymentsQueuePage({
   searchParams,
 }: {
@@ -17,16 +19,14 @@ export default function PaymentsQueuePage({
 }) {
   return (
     <>
-      <PageHeader
-        title="Payments"
-        description="Inward and outward payments awaiting compliance review."
-      />
+      <PageHeader title="Payments queue" />
       <QueuePageBody
         searchParams={searchParams}
         load={getTransactionQueue}
-        columns={paymentColumns}
+        columns={paymentsQueueColumns}
         emptyTitle="No payments in queue"
-        emptyDescription="Funds in / funds out cases will appear here from /transactionQueue."
+        emptyDescription="Inward and outward cases will appear here from /transactionQueue."
+        variant="payments"
       />
     </>
   );

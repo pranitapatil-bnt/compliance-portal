@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { paymentColumns } from "@/constants/screens";
+import { paymentsQueueColumns } from "@/constants/screens";
 import { QueuePageBody } from "@/features/queues";
 import { getPaymentsReport } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
@@ -24,10 +24,12 @@ export default function PaymentsReportPage({
       <QueuePageBody
         searchParams={searchParams}
         load={getPaymentsReport}
-        columns={paymentColumns}
+        columns={paymentsQueueColumns}
         emptyTitle="No report results"
         emptyDescription="Run a search against /transactionReport."
         showExport
+        fromReport
+        variant="payments"
       />
     </>
   );

@@ -43,6 +43,8 @@ export function readQueueQuery(
     sanctionStatus: first(searchParams.sanctionStatus) || undefined,
     blacklistStatus: first(searchParams.blacklistStatus) || undefined,
     customCheckStatus: first(searchParams.customCheckStatus) || undefined,
+    watchListStatus: first(searchParams.watchListStatus) || undefined,
+    custTypes: all(searchParams.custType),
     direction: first(searchParams.direction) || undefined,
     ...extras,
   };
@@ -86,7 +88,12 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
   const sanctionStatus = query.sanctionStatus?.trim() || undefined;
   const blacklistStatus = query.blacklistStatus?.trim() || undefined;
   const customCheckStatus = query.customCheckStatus?.trim() || undefined;
-  const custType = query.custType?.trim() || undefined;
+  const watchListStatus = query.watchListStatus?.trim() || undefined;
+  const custTypes = query.custTypes?.length
+    ? query.custTypes
+    : query.custType
+      ? [query.custType]
+      : undefined;
   const direction = query.direction?.trim() || undefined;
   const hasDirection = Boolean(direction && direction !== "ALL");
   const maxRecord =
@@ -104,6 +111,8 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
     sanctionStatus ||
     blacklistStatus ||
     customCheckStatus ||
+    watchListStatus ||
+    custTypes?.length ||
     hasDirection,
   );
 
@@ -144,7 +153,12 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
     "customCheckStatus",
     customCheckStatus ? [customCheckStatus] : undefined,
   );
-  putList(filter, "custType", custType ? [custType] : undefined);
+  putList(
+    filter,
+    "watchListStatus",
+    watchListStatus ? [watchListStatus] : undefined,
+  );
+  putList(filter, "custType", custTypes);
   putValue(filter, "direction", hasDirection ? direction : undefined);
 
   return withQueueDefaults({
@@ -161,6 +175,6 @@ export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
     isFilterApply,
     isRequestFromReportPage: Boolean(query.fromReport),
     isLandingPage: Boolean(query.fromReport) && !isFilterApply,
-    custType: custType ?? null,
+    custType: custTypes?.length === 1 ? (custTypes[0] ?? null) : null,
   });
 }

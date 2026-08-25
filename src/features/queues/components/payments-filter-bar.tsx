@@ -14,20 +14,22 @@ import {
 import { datePresets } from "../date-presets";
 import type { QueueQuery } from "../types";
 
-const statuses = ["Active", "Inactive", "Rejected"] as const;
+const statuses = ["HOLD", "FAILED", "CLEARED", "REJECTED"] as const;
+const types = ["PERSONAL", "CORPORATE"] as const;
 
-type OnboardingFilterBarProps = {
+type PaymentsFilterBarProps = {
   query: QueueQuery;
   organizations?: string[];
   action?: string;
 };
 
-export function OnboardingFilterBar({
+export function PaymentsFilterBar({
   query,
   organizations = [],
-  action = routes.reg,
-}: OnboardingFilterBarProps) {
+  action = routes.transactions,
+}: PaymentsFilterBarProps) {
   const pickedOrgs = query.organizations ?? [];
+  const pickedTypes = query.custTypes ?? [];
   const showCustomDates = query.dateFilterType === "Custom";
 
   return (
@@ -65,54 +67,48 @@ export function OnboardingFilterBar({
             disabled
             className="inline-flex h-[34px] items-center justify-center rounded-md border border-[#d5dde5] bg-white px-3.5 text-sm font-medium text-[#b0b7c0] disabled:cursor-not-allowed"
           >
-            Delete
+            Details
           </button>
         </div>
       </div>
 
       <div className="mt-3 flex flex-nowrap items-end gap-3 overflow-visible">
-        <fieldset className="shrink-0">
+        <label className="w-[128px] shrink-0">
           <FieldLabel>Status</FieldLabel>
-          <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
+          <select
+            name="status"
+            defaultValue={query.status ?? ""}
+            className={cn(selectClass, "text-[#6b7785]")}
+            style={selectArrow}
+          >
+            <option value="">All</option>
             {statuses.map((status) => (
-              <label key={status} className={segmentClass}>
+              <option key={status} value={status}>
+                {status === "FAILED" ? "Failed" : status}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <fieldset className="shrink-0">
+          <FieldLabel>Type</FieldLabel>
+          <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
+            {types.map((type) => (
+              <label key={type} className={segmentClass}>
                 <input
                   type="checkbox"
-                  name="status"
-                  value={status}
-                  defaultChecked={query.statuses?.includes(status)}
+                  name="custType"
+                  value={type}
+                  defaultChecked={pickedTypes.includes(type)}
                   className="sr-only"
                 />
-                {status}
+                {type}
               </label>
             ))}
           </div>
         </fieldset>
 
-        <OrganizationPicker
-          organizations={organizations}
-          picked={pickedOrgs}
-          label="Organizations"
-          emptyLabel="Select"
-        />
-
-        <fieldset className="shrink-0">
-          <FieldLabel>New or Updated</FieldLabel>
-          <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
-            {(["New", "Updated"] as const).map((item) => (
-              <label key={item} className={segmentClass}>
-                <input
-                  type="radio"
-                  name="newOrUpdated"
-                  value={item}
-                  defaultChecked={query.newOrUpdated === item}
-                  className="sr-only"
-                />
-                {item}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <OrganizationPicker organizations={organizations} picked={pickedOrgs} />
 
         <Divider />
 
@@ -156,7 +152,11 @@ export function OnboardingFilterBar({
         <Divider />
 
         <div className="flex shrink-0 flex-nowrap items-end gap-2 rounded-md border border-[#e4eaf0] px-2.5 pt-1 pb-1.5">
-          <CheckPair name="kycStatus" legend="EID" value={query.kycStatus} />
+          <CheckPair
+            name="watchListStatus"
+            legend="WL"
+            value={query.watchListStatus}
+          />
           <CheckPair
             name="fraugsterStatus"
             legend="FP"

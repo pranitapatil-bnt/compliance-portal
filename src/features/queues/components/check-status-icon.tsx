@@ -41,10 +41,33 @@ function NaIcon() {
   );
 }
 
+function PendingIcon() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-4" aria-hidden="true">
+      <circle
+        cx="10"
+        cy="10"
+        r="6.2"
+        fill="none"
+        stroke="#8b93a7"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M10 6.4v4.1l2.6 1.5"
+        fill="none"
+        stroke="#8b93a7"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 const icons: Record<CheckStatus, () => ReactNode> = {
   pass: PassIcon,
   fail: FailIcon,
   na: NaIcon,
+  pending: PendingIcon,
 };
 
 export function CheckStatusIcon({ value }: { value: string }) {

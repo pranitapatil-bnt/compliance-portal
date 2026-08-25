@@ -2,6 +2,7 @@ import { WorkQueueScreen } from "@/components/shared/work-queue-screen";
 import { routes } from "@/constants/routes";
 
 import { OnboardingQueueScreen } from "./onboarding-queue-screen";
+import { PaymentsQueueScreen } from "./payments-queue-screen";
 import { readQueueQuery } from "../search-body";
 import { getOrganizationNames } from "../services/queue-service";
 import type { QueueQuery, QueueResult, QueueSearchParams } from "../types";
@@ -14,7 +15,7 @@ type QueuePageBodyProps = {
   emptyDescription: string;
   showExport?: boolean;
   fromReport?: boolean;
-  variant?: "default" | "onboarding";
+  variant?: "default" | "onboarding" | "payments";
 };
 
 export async function QueuePageBody({
@@ -43,6 +44,23 @@ export async function QueuePageBody({
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsOnboarding : routes.reg}
         endpoint={fromReport ? "reg-report-criteria" : "reg-queue"}
+        result={result}
+      />
+    );
+  }
+
+  if (variant === "payments") {
+    const [organizations, result] = await Promise.all([
+      getOrganizationNames(),
+      load(query),
+    ]);
+    return (
+      <PaymentsQueueScreen
+        query={query}
+        organizations={organizations}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        action={fromReport ? routes.reportsPayments : routes.transactions}
         result={result}
       />
     );
