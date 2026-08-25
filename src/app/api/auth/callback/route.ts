@@ -15,6 +15,7 @@ import {
 import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function loginError(request: NextRequest, code: string) {
   const loginUrl = new URL(routes.login, request.url);

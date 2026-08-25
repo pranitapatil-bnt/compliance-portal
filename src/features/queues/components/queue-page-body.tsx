@@ -1,7 +1,9 @@
 import { WorkQueueScreen } from "@/components/shared/work-queue-screen";
+import { routes } from "@/constants/routes";
 
 import { OnboardingQueueScreen } from "./onboarding-queue-screen";
 import { readQueueQuery } from "../search-body";
+import { getOrganizationNames } from "../services/queue-service";
 import type { QueueQuery, QueueResult, QueueSearchParams } from "../types";
 
 type QueuePageBodyProps = {
@@ -27,18 +29,22 @@ export async function QueuePageBody({
 }: QueuePageBodyProps) {
   const params = await searchParams;
   const query = readQueueQuery(params, { fromReport });
-  const result = await load(query);
 
   if (variant === "onboarding") {
+    const organizations = await getOrganizationNames();
     return (
       <OnboardingQueueScreen
-        result={result}
         query={query}
+        organizations={organizations}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
+        action={fromReport ? routes.reportsOnboarding : routes.reg}
+        endpoint={fromReport ? "reg-report-criteria" : "reg-queue"}
       />
     );
   }
+
+  const result = await load(query);
 
   return (
     <WorkQueueScreen

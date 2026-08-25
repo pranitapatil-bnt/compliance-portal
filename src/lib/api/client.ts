@@ -1,6 +1,6 @@
 import "server-only";
 
-import { env } from "@/config/env";
+import { env, readPortalApiBase } from "@/config/env";
 import { logger } from "@/lib/logger";
 
 import { ApiError } from "./errors";
@@ -17,11 +17,14 @@ type RequestOptions = {
   cookie?: string;
   payload?: unknown;
   ajax?: boolean;
+  json?: boolean;
   redirect?: RequestRedirect;
 };
 
 const LOGIN_HINT =
   "Could not open the Java portal session. Sign out and sign in again.";
+
+export const PORTAL_SESSION_EXPIRED = LOGIN_HINT;
 
 function looksLikeLoginPage(text: string): boolean {
   const sample = text.slice(0, 800).toLowerCase();
@@ -63,7 +66,7 @@ function parseBody(status: number, contentType: string, text: string): unknown {
     }
   }
 
-  if (looksLikeLoginPage(text) || status === 401 || status === 403) {
+  if (looksLikeLoginPage(text)) {
     throw new ApiError(LOGIN_HINT, 401);
   }
 
@@ -120,12 +123,17 @@ async function request(
   }
 
   let body: string | undefined;
-  if (options.payload !== undefined) {
+  if (options.json || options.payload !== undefined) {
     headers["Content-Type"] = "application/json";
-    body = JSON.stringify(options.payload);
+    if (options.payload !== undefined) {
+      body = JSON.stringify(options.payload);
+    }
   }
 
-  const response = await requestRaw(`${baseUrl}${path}`, {
+  const url = `${baseUrl}${path}`;
+  logger.info(`Portal ${method} ${url}`);
+
+  const response = await requestRaw(url, {
     method,
     headers,
     body,
@@ -142,6 +150,9 @@ async function request(
   );
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new ApiError("You do not have permission to do that.", 401);
+    }
     throw new ApiError(`${method} ${path} failed`, response.status);
   }
 
@@ -162,58 +173,93 @@ export async function apiPost(
 function shouldRetryPortal(error: unknown): boolean {
   return (
     error instanceof ApiError &&
-    (error.status === 401 || error.message === "Response was not valid JSON")
+    (error.message === LOGIN_HINT ||
+      error.message === "Response was not valid JSON")
   );
 }
 
+export type PortalCallOptions = {
+  cookie?: string;
+};
+
+function requirePortalBase(): string {
+  const base = readPortalApiBase();
+  if (!base) {
+    throw new ApiError("COMPLIANCE_API_BASE is not configured", 500);
+  }
+  return base;
+}
+
 async function withPortalRetry<T>(
-  run: (cookie?: string) => Promise<T>,
+  run: (cookie: string) => Promise<T>,
+  cookieOverride?: string,
 ): Promise<T> {
+  if (cookieOverride) {
+    return run(cookieOverride);
+  }
+
+  const cookie = await getPortalSessionCookie();
+  if (!cookie) {
+    throw new ApiError(LOGIN_HINT, 401);
+  }
+
   try {
-    return await run(await getPortalSessionCookie());
+    return await run(cookie);
   } catch (error) {
     if (!shouldRetryPortal(error)) {
       throw error;
     }
     await invalidatePortalSession();
-    return run(await getPortalSessionCookie({ forceRefresh: true }));
+    const refreshed = await getPortalSessionCookie({ forceRefresh: true });
+    if (!refreshed) {
+      throw new ApiError(LOGIN_HINT, 401);
+    }
+    return run(refreshed);
   }
 }
 
-export async function portalApiGet(path: string): Promise<unknown> {
-  return withPortalRetry((cookie) =>
-    request("GET", path, {
-      ajax: true,
-      redirect: "manual",
-      cookie,
-    }),
+function portalRequest(
+  method: string,
+  path: string,
+  options: RequestOptions & PortalCallOptions = {},
+): Promise<unknown> {
+  const { cookie: cookieOverride, ...requestOptions } = options;
+  return withPortalRetry(
+    (cookie) =>
+      request(method, path, {
+        ...requestOptions,
+        ajax: true,
+        json: true,
+        redirect: "manual",
+        cookie,
+        baseUrl: requirePortalBase(),
+      }),
+    cookieOverride,
   );
+}
+
+export async function portalApiGet(
+  path: string,
+  options: PortalCallOptions = {},
+): Promise<unknown> {
+  return portalRequest("GET", path, options);
 }
 
 export async function portalApiPost(
   path: string,
   payload?: unknown,
+  options: PortalCallOptions = {},
 ): Promise<unknown> {
-  return withPortalRetry((cookie) =>
-    request("POST", path, {
-      payload,
-      ajax: true,
-      redirect: "manual",
-      cookie,
-    }),
-  );
+  return portalRequest("POST", path, { ...options, payload });
 }
 
 export async function portalApiForm(
   path: string,
   fields: Record<string, string>,
 ): Promise<string> {
-  const baseUrl = env.apiBaseUrl;
-  if (!baseUrl) {
-    throw new ApiError("API_BASE_URL is not configured", 500);
-  }
+  const baseUrl = requirePortalBase();
 
-  const post = async (cookie?: string): Promise<string> => {
+  const post = async (cookie: string): Promise<string> => {
     const headers: Record<string, string> = {
       Accept: "text/html,application/xhtml+xml",
       "Content-Type": "application/x-www-form-urlencoded",
@@ -244,28 +290,17 @@ export async function portalApiForm(
   return withPortalRetry(post);
 }
 
-export async function complianceApiGet(path: string): Promise<unknown> {
-  if (!env.complianceApiBase) {
-    throw new ApiError("COMPLIANCE_API_BASE is not configured", 500);
-  }
-
-  return request("GET", path, {
-    baseUrl: env.complianceApiBase,
-    bearer: true,
-  });
+export async function complianceApiGet(
+  path: string,
+  options: PortalCallOptions = {},
+): Promise<unknown> {
+  return portalApiGet(path, options);
 }
 
 export async function complianceApiPost(
   path: string,
   payload?: unknown,
+  options: PortalCallOptions = {},
 ): Promise<unknown> {
-  if (!env.complianceApiBase) {
-    throw new ApiError("COMPLIANCE_API_BASE is not configured", 500);
-  }
-
-  return request("POST", path, {
-    baseUrl: env.complianceApiBase,
-    bearer: true,
-    payload,
-  });
+  return portalApiPost(path, payload, options);
 }

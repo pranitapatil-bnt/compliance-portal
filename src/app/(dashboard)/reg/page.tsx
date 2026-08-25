@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   title: "Onboarding queue",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function OnboardingQueuePage({
   searchParams,
 }: {

@@ -41,18 +41,91 @@ function pair(html: string, failId: string, passId: string): CheckBadge {
   };
 }
 
+function attrValue(html: string, keys: string[]): string {
+  for (const key of keys) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const patterns = [
+      new RegExp(
+        `(?:id|name)=["']${escaped}["'][^>]*value=["']([^"']*)["']`,
+        "i",
+      ),
+      new RegExp(
+        `value=["']([^"']*)["'][^>]*(?:id|name)=["']${escaped}["']`,
+        "i",
+      ),
+    ];
+    for (const pattern of patterns) {
+      const match = pattern.exec(html);
+      const value = match?.[1] ? stripTags(match[1]) : "";
+      if (value) {
+        return value;
+      }
+    }
+  }
+  return "";
+}
+
+function asId(value: string): number | null {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function lockOwner(html: string): {
+  locked: boolean;
+  owned: boolean;
+  lockedBy: string;
+} {
+  const owned = /You own\(s\) this record/i.test(html);
+  const match = /([^<\n]+)\s+own\(s\) this record/i.exec(html);
+  const lockedBy = match?.[1] ? stripTags(match[1]) : "";
+  return {
+    locked: owned || lockedBy.length > 0,
+    owned,
+    lockedBy: owned ? "You" : lockedBy,
+  };
+}
+
 export function parseRegistrationDetailsHtml(
   html: string,
 ): RegistrationDetails {
   const lastUpdated =
     /Last updated by\s*<strong>([\s\S]*?)<\/strong>\s*on\s*([^<]+)/i.exec(html);
+  const owner = lockOwner(html);
+  const status =
+    textById(html, "contact_compliacneStatus") ||
+    attrValue(html, ["contactStatus", "complianceStatus"]) ||
+    "INACTIVE";
+  const custType =
+    textById(html, "account_clientType") ||
+    attrValue(html, ["custType", "clientType"]) ||
+    "PERSONAL";
+  const organization =
+    textById(html, "account_organisation") ||
+    attrValue(html, ["orgCode", "organisation", "organization"]);
 
   return {
     ...emptyDetails,
+    contactId: asId(attrValue(html, ["contactId", "contact_id", "entityId"])),
+    accountId: asId(attrValue(html, ["accountId", "account_id"])),
+    userResourceId: asId(
+      attrValue(html, [
+        "userResourceId",
+        "userResourceLockId",
+        "lockId",
+        "user_resource_id",
+      ]),
+    ),
+    orgCode: organization,
+    custType,
+    preContactStatus: status,
+    preAccountStatus: status,
     clientNumber: dash(
       textById(html, "account_tradeAccountNum").replace(/^Client\s*#\s*/i, ""),
     ),
-    status: textById(html, "contact_compliacneStatus") || "INACTIVE",
+    status,
     name: dash(textById(html, "contact_name")),
     clientType: dash(textById(html, "account_clientType")),
     occupation: dash(textById(html, "contact_occupation")),
@@ -81,13 +154,15 @@ export function parseRegistrationDetailsHtml(
     purposeOfTxn: dash(textById(html, "account_purposeOfTxn")),
     aiEtvBand: textById(html, "account_conversionpredictionetvband") || "----",
     countryOfResidence: dash(textById(html, "contact_countryOfResidence")),
-    organization: dash(textById(html, "account_organisation")),
+    organization: dash(organization),
     sourceOfFunds: dash(textById(html, "account_sourceOfFunds")),
     primaryContact: dash(textById(html, "is_primaryContact")),
     complianceLog: textById(html, "regDetails_alert_compliance_log"),
     lastUpdatedBy: lastUpdated?.[1] ? stripTags(lastUpdated[1]) : "",
     lastUpdatedOn: lastUpdated?.[2]?.trim() ?? "",
-    locked: /You own\(s\) this record/i.test(html),
+    locked: owner.locked,
+    owned: owner.owned,
+    lockedBy: owner.lockedBy,
     badges: {
       blacklist: pair(html, "regDetails_blackPass", "regDetails_blackNeg"),
       eid: pair(html, "regDetails_kycPass", "regDetails_kycNeg"),

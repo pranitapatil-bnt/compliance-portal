@@ -1,3 +1,7 @@
+import { withQueueDefaults } from "@/lib/compliance/search";
+import type { QueueSearchRequest } from "@/lib/compliance/types";
+
+import { datesForPreset } from "./date-presets";
 import type { QueueQuery, QueueSearchParams } from "./types";
 
 function first(value: string | string[] | undefined): string {
@@ -19,14 +23,20 @@ export function readQueueQuery(
   searchParams: QueueSearchParams,
   extras: Pick<QueueQuery, "fromReport" | "custType"> = {},
 ): QueueQuery {
+  const dateFilterType = first(searchParams.dateFilterType) || undefined;
+  const preset =
+    dateFilterType && dateFilterType !== "Custom"
+      ? datesForPreset(dateFilterType)
+      : null;
+
   return {
     keyword: first(searchParams.keyword) || undefined,
     status: first(searchParams.status) || undefined,
     statuses: all(searchParams.status),
     organizations: all(searchParams.organization),
-    dateFrom: first(searchParams.dateFrom) || undefined,
-    dateTo: first(searchParams.dateTo) || undefined,
-    dateFilterType: first(searchParams.dateFilterType) || undefined,
+    dateFrom: preset?.from || first(searchParams.dateFrom) || undefined,
+    dateTo: preset?.to || first(searchParams.dateTo) || undefined,
+    dateFilterType,
     newOrUpdated: first(searchParams.newOrUpdated) || undefined,
     kycStatus: first(searchParams.kycStatus) || undefined,
     fraugsterStatus: first(searchParams.fraugsterStatus) || undefined,
@@ -59,7 +69,7 @@ function putValue(
   }
 }
 
-export function buildQueueSearch(query: QueueQuery = {}) {
+export function buildQueueSearch(query: QueueQuery = {}): QueueSearchRequest {
   const keyword = query.keyword?.trim() || undefined;
   const statuses = query.statuses?.length
     ? query.statuses
@@ -136,18 +146,20 @@ export function buildQueueSearch(query: QueueQuery = {}) {
   putList(filter, "custType", custType ? [custType] : undefined);
   putValue(filter, "direction", hasDirection ? direction : undefined);
 
-  return {
-    filter,
+  return withQueueDefaults({
+    filter: filter as QueueSearchRequest["filter"],
     page: {
       currentPage: 1,
       minRecord: 1,
       maxRecord: 50,
       totalRecords: 0,
       totalPages: 0,
+      pageSize: 50,
+      currentRecord: null,
     },
     isFilterApply,
     isRequestFromReportPage: Boolean(query.fromReport),
     isLandingPage: Boolean(query.fromReport) && !isFilterApply,
     custType: custType ?? null,
-  };
+  });
 }

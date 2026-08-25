@@ -100,13 +100,33 @@ function isLocked(value: unknown): boolean {
   return value === true || value === "true";
 }
 
-function readStringList(value: unknown): string[] {
+export function readOrgLabels(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value
-    .map((item) => (typeof item === "string" ? item.trim() : ""))
-    .filter((item) => item.length > 0);
+
+  const labels: string[] = [];
+  for (const item of value) {
+    if (typeof item === "string") {
+      const text = item.trim();
+      if (text) {
+        labels.push(text);
+      }
+      continue;
+    }
+    if (!isRecord(item)) {
+      continue;
+    }
+    const text =
+      readString(item.name)?.trim() ||
+      readString(item.code)?.trim() ||
+      readString(item.organization)?.trim() ||
+      "";
+    if (text) {
+      labels.push(text);
+    }
+  }
+  return labels;
 }
 
 function firstText(...values: unknown[]): string {
@@ -135,13 +155,28 @@ export function mapRegistrationQueue(payload: unknown): QueueResult {
     const type = firstText(row.type) || "PERSONAL";
     const locked = isLocked(row.locked);
     const lockedBy = readString(row.lockedBy);
+    const params = new URLSearchParams({ type });
+    const accountId = idPart(row.accountId);
+    const org = firstText(row.organisation, row.organization);
+    const lockId = idPart(row.userResourceLockId);
+    const status = firstText(row.complianceStatus);
+    if (accountId) {
+      params.set("accountId", accountId);
+    }
+    if (org) {
+      params.set("org", org);
+    }
+    if (lockId) {
+      params.set("lockId", lockId);
+    }
+    if (status) {
+      params.set("status", status);
+    }
     return {
       id: rowId(row, `reg-${index}`),
       contactId,
       type,
-      href: contactId
-        ? `/reg/${contactId}?type=${encodeURIComponent(type)}`
-        : undefined,
+      href: contactId ? `/reg/${contactId}?${params.toString()}` : undefined,
       locked,
       owned: Boolean(locked && lockedBy && userName && lockedBy === userName),
       lockedBy,
@@ -164,7 +199,7 @@ export function mapRegistrationQueue(payload: unknown): QueueResult {
   });
   const result = asQueue(payload, rows);
   result.organizations = isRecord(payload)
-    ? readStringList(payload.organization)
+    ? readOrgLabels(payload.organization)
     : [];
   return result;
 }
@@ -205,7 +240,9 @@ export function mapPaymentOutQueue(payload: unknown): QueueResult {
 
 export function mapTransactionQueue(payload: unknown): QueueResult {
   const rows = asRecordList(
-    isRecord(payload) ? payload.transactions : payload,
+    isRecord(payload)
+      ? (payload.transactionQueue ?? payload.transactions)
+      : payload,
   ).map((row, index) => ({
     id: rowId(row, `txn-${index}`),
     cells: [

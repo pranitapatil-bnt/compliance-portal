@@ -43,6 +43,26 @@ export const env = {
   },
 } as const;
 
+/** Java portal JSON API root. Cookie auth (JSESSIONID), not Bearer JWT. */
+export function readPortalApiBase(): string | undefined {
+  const raw = env.complianceApiBase ?? env.apiBaseUrl;
+  if (!raw) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(raw);
+    const origin = url.origin;
+    const path = url.pathname.replace(/\/$/, "");
+    if (!path || path === "/") {
+      return `${origin}/compliance-portal`;
+    }
+    return `${origin}${path}`;
+  } catch {
+    return raw.replace(/\/$/, "");
+  }
+}
+
 export function isKeycloakLoginConfigured(): boolean {
   return Boolean(
     env.keycloak.issuer &&

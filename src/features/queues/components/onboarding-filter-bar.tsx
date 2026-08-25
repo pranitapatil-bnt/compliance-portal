@@ -1,65 +1,11 @@
-"use client";
-
-import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-
+import { routes } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
+import { asRoute } from "@/lib/utils/routes";
 
+import { datePresets } from "../date-presets";
 import type { QueueQuery } from "../types";
 
 const statuses = ["Active", "Inactive", "Rejected"] as const;
-
-const datePresets = [
-  { value: "Today", label: "Today" },
-  { value: "Yesterday", label: "Yesterday" },
-  { value: "ThisWeek", label: "This Week" },
-  { value: "ThisMonth", label: "This Month" },
-  { value: "ThisYear", label: "This Year" },
-  { value: "Custom", label: "Custom" },
-] as const;
-
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
-function formatDate(date: Date): string {
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
-}
-
-function datesForPreset(preset: string): { from: string; to: string } {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  if (preset === "Yesterday") {
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const value = formatDate(yesterday);
-    return { from: value, to: value };
-  }
-  if (preset === "ThisWeek") {
-    const start = new Date(today);
-    const day = start.getDay();
-    start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
-    return { from: formatDate(start), to: formatDate(today) };
-  }
-  if (preset === "ThisMonth") {
-    return {
-      from: formatDate(new Date(today.getFullYear(), today.getMonth(), 1)),
-      to: formatDate(today),
-    };
-  }
-  if (preset === "ThisYear") {
-    return {
-      from: formatDate(new Date(today.getFullYear(), 0, 1)),
-      to: formatDate(today),
-    };
-  }
-  if (preset === "Today") {
-    const value = formatDate(today);
-    return { from: value, to: value };
-  }
-  return { from: "", to: "" };
-}
 
 function PassIcon() {
   return (
@@ -153,71 +99,36 @@ function CheckPair({
 type OnboardingFilterBarProps = {
   query: QueueQuery;
   organizations?: string[];
+  action?: string;
 };
 
 export function OnboardingFilterBar({
   query,
   organizations = [],
+  action = routes.reg,
 }: OnboardingFilterBarProps) {
-  const pathname = usePathname();
-  const orgRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(true);
-  const [orgOpen, setOrgOpen] = useState(false);
-  const [dateFrom, setDateFrom] = useState(query.dateFrom ?? "");
-  const [dateTo, setDateTo] = useState(query.dateTo ?? "");
-  const [period, setPeriod] = useState(query.dateFilterType ?? "");
-  const [pickedOrgs, setPickedOrgs] = useState<string[]>(
-    query.organizations ?? [],
-  );
-  const selectedOrgs = useMemo(() => new Set(pickedOrgs), [pickedOrgs]);
-
-  useEffect(() => {
-    function onPointerDown(event: MouseEvent) {
-      if (!orgRef.current?.contains(event.target as Node)) {
-        setOrgOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, []);
-
-  function applyPreset(next: string) {
-    setPeriod(next);
-    const range = datesForPreset(next);
-    setDateFrom(range.from);
-    setDateTo(range.to);
-  }
-
+  const pickedOrgs = query.organizations ?? [];
   const orgLabel =
     pickedOrgs.length === 0
       ? "Select"
       : pickedOrgs.length === 1
         ? pickedOrgs[0]
         : `${pickedOrgs.length} selected`;
+  const showCustomDates = query.dateFilterType === "Custom";
 
   return (
-    <form className="rounded-lg border border-[#dce3ea] bg-white px-4 py-3">
+    <form
+      method="GET"
+      action={asRoute(action)}
+      className="rounded-lg border border-[#dce3ea] bg-white px-4 py-3"
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-          className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-[#2c3a4a]"
-        >
-          <span
-            aria-hidden="true"
-            className={cn(
-              "inline-block text-xs text-[#7b8794] transition-transform",
-              !open && "rotate-180",
-            )}
-          >
-            ▴
-          </span>
+        <p className="text-[15px] font-semibold text-[#2c3a4a]">
           Search filters
-        </button>
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           <a
-            href={pathname}
+            href={asRoute(action)}
             className="inline-flex h-[34px] items-center justify-center rounded-md border border-[#d5dde5] bg-white px-3.5 text-sm font-medium text-[#3d7ec4] hover:bg-[#f7f9fb]"
           >
             Clear
@@ -245,34 +156,32 @@ export function OnboardingFilterBar({
         </div>
       </div>
 
-      {open ? (
-        <div className="mt-3 flex flex-nowrap items-end gap-3 overflow-visible">
-          <fieldset className="shrink-0">
-            <FieldLabel>Status</FieldLabel>
-            <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
-              {statuses.map((status) => (
-                <label key={status} className={segmentClass}>
-                  <input
-                    type="checkbox"
-                    name="status"
-                    value={status}
-                    defaultChecked={query.statuses?.includes(status)}
-                    className="sr-only"
-                  />
-                  {status}
-                </label>
-              ))}
-            </div>
-          </fieldset>
+      <div className="mt-3 flex flex-nowrap items-end gap-3 overflow-visible">
+        <fieldset className="shrink-0">
+          <FieldLabel>Status</FieldLabel>
+          <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
+            {statuses.map((status) => (
+              <label key={status} className={segmentClass}>
+                <input
+                  type="checkbox"
+                  name="status"
+                  value={status}
+                  defaultChecked={query.statuses?.includes(status)}
+                  className="sr-only"
+                />
+                {status}
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
-          <div ref={orgRef} className="relative w-[128px] shrink-0">
-            <FieldLabel>Organizations</FieldLabel>
-            <button
-              type="button"
-              onClick={() => setOrgOpen((value) => !value)}
+        <div className="relative w-[128px] shrink-0">
+          <FieldLabel>Organizations</FieldLabel>
+          <details>
+            <summary
               className={cn(
                 selectClass,
-                "flex items-center justify-between pr-3",
+                "flex cursor-pointer list-none items-center justify-between pr-3 [&::-webkit-details-marker]:hidden",
               )}
             >
               <span className="truncate text-[#6b7785]">{orgLabel}</span>
@@ -282,139 +191,116 @@ export function OnboardingFilterBar({
               >
                 ▾
               </span>
-            </button>
-            {pickedOrgs.map((organization) => (
-              <input
-                key={organization}
-                type="hidden"
-                name="organization"
-                value={organization}
-              />
-            ))}
-            {orgOpen ? (
-              <div className="absolute top-full left-0 z-20 mt-1 min-w-[12rem] rounded-md border border-[#d5dde5] bg-white py-1 shadow-[0_12px_28px_rgba(15,40,70,0.12)]">
-                {organizations.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-[#7b8794]">
-                    No organizations
-                  </p>
-                ) : (
-                  organizations.map((organization) => (
-                    <label
-                      key={organization}
-                      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-[#2c3a4a] hover:bg-[#f3f8fd]"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedOrgs.has(organization)}
-                        onChange={() => {
-                          setPickedOrgs((current) =>
-                            current.includes(organization)
-                              ? current.filter((item) => item !== organization)
-                              : [...current, organization],
-                          );
-                        }}
-                        className="size-3.5 rounded border-[#c5ced8] accent-[#3d7ec4]"
-                      />
-                      {organization}
-                    </label>
-                  ))
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          <fieldset className="shrink-0">
-            <FieldLabel>New or Updated</FieldLabel>
-            <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
-              {(["New", "Updated"] as const).map((item) => (
-                <label key={item} className={segmentClass}>
-                  <input
-                    type="radio"
-                    name="newOrUpdated"
-                    value={item}
-                    defaultChecked={query.newOrUpdated === item}
-                    className="sr-only"
-                  />
-                  {item}
-                </label>
-              ))}
+            </summary>
+            <div className="absolute top-full left-0 z-20 mt-1 min-w-[12rem] rounded-md border border-[#d5dde5] bg-white py-1 shadow-[0_12px_28px_rgba(15,40,70,0.12)]">
+              {organizations.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-[#7b8794]">
+                  No organizations
+                </p>
+              ) : (
+                organizations.map((organization) => (
+                  <label
+                    key={organization}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-[#2c3a4a] hover:bg-[#f3f8fd]"
+                  >
+                    <input
+                      type="checkbox"
+                      name="organization"
+                      value={organization}
+                      defaultChecked={pickedOrgs.includes(organization)}
+                      className="size-3.5 rounded border-[#c5ced8] accent-[#3d7ec4]"
+                    />
+                    {organization}
+                  </label>
+                ))
+              )}
             </div>
-          </fieldset>
-
-          <Divider />
-
-          <label className="w-[150px] shrink-0">
-            <select
-              name="dateFilterType"
-              value={period}
-              onChange={(event) => applyPreset(event.target.value)}
-              className={cn(selectClass, "text-[#6b7785]")}
-              style={selectArrow}
-            >
-              <option value="">Select period</option>
-              {datePresets.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {period === "Custom" ? (
-            <>
-              <label className="shrink-0">
-                <input
-                  name="dateFrom"
-                  value={dateFrom}
-                  onChange={(event) => setDateFrom(event.target.value)}
-                  placeholder="From"
-                  className="h-[34px] w-[92px] rounded-md border border-[#d5dde5] bg-white px-2 text-[12px] text-[#2c3a4a]"
-                />
-              </label>
-              <label className="shrink-0">
-                <input
-                  name="dateTo"
-                  value={dateTo}
-                  onChange={(event) => setDateTo(event.target.value)}
-                  placeholder="To"
-                  className="h-[34px] w-[92px] rounded-md border border-[#d5dde5] bg-white px-2 text-[12px] text-[#2c3a4a]"
-                />
-              </label>
-            </>
-          ) : (
-            <>
-              <input type="hidden" name="dateFrom" value={dateFrom} />
-              <input type="hidden" name="dateTo" value={dateTo} />
-            </>
-          )}
-
-          <Divider />
-
-          <div className="flex shrink-0 flex-nowrap items-end gap-2 rounded-md border border-[#e4eaf0] px-2.5 pt-1 pb-1.5">
-            <CheckPair name="kycStatus" legend="EID" value={query.kycStatus} />
-            <CheckPair
-              name="fraugsterStatus"
-              legend="FP"
-              value={query.fraugsterStatus}
-            />
-            <CheckPair
-              name="sanctionStatus"
-              legend="Sanc"
-              value={query.sanctionStatus}
-            />
-            <CheckPair
-              name="blacklistStatus"
-              legend="BL"
-              value={query.blacklistStatus}
-            />
-            <CheckPair
-              name="customCheckStatus"
-              legend="Custom"
-              value={query.customCheckStatus}
-            />
-          </div>
+          </details>
         </div>
-      ) : null}
+
+        <fieldset className="shrink-0">
+          <FieldLabel>New or Updated</FieldLabel>
+          <div className="inline-flex h-[34px] items-center overflow-hidden rounded-md bg-[#eef3f7]">
+            {(["New", "Updated"] as const).map((item) => (
+              <label key={item} className={segmentClass}>
+                <input
+                  type="radio"
+                  name="newOrUpdated"
+                  value={item}
+                  defaultChecked={query.newOrUpdated === item}
+                  className="sr-only"
+                />
+                {item}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <Divider />
+
+        <label className="w-[150px] shrink-0">
+          <select
+            name="dateFilterType"
+            defaultValue={query.dateFilterType ?? ""}
+            className={cn(selectClass, "text-[#6b7785]")}
+            style={selectArrow}
+          >
+            <option value="">Select period</option>
+            {datePresets.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {showCustomDates ? (
+          <>
+            <label className="shrink-0">
+              <input
+                name="dateFrom"
+                defaultValue={query.dateFrom ?? ""}
+                placeholder="From"
+                className="h-[34px] w-[92px] rounded-md border border-[#d5dde5] bg-white px-2 text-[12px] text-[#2c3a4a]"
+              />
+            </label>
+            <label className="shrink-0">
+              <input
+                name="dateTo"
+                defaultValue={query.dateTo ?? ""}
+                placeholder="To"
+                className="h-[34px] w-[92px] rounded-md border border-[#d5dde5] bg-white px-2 text-[12px] text-[#2c3a4a]"
+              />
+            </label>
+          </>
+        ) : null}
+
+        <Divider />
+
+        <div className="flex shrink-0 flex-nowrap items-end gap-2 rounded-md border border-[#e4eaf0] px-2.5 pt-1 pb-1.5">
+          <CheckPair name="kycStatus" legend="EID" value={query.kycStatus} />
+          <CheckPair
+            name="fraugsterStatus"
+            legend="FP"
+            value={query.fraugsterStatus}
+          />
+          <CheckPair
+            name="sanctionStatus"
+            legend="Sanc"
+            value={query.sanctionStatus}
+          />
+          <CheckPair
+            name="blacklistStatus"
+            legend="BL"
+            value={query.blacklistStatus}
+          />
+          <CheckPair
+            name="customCheckStatus"
+            legend="Custom"
+            value={query.customCheckStatus}
+          />
+        </div>
+      </div>
     </form>
   );
 }

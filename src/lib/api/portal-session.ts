@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-import { env } from "@/config/env";
+import { env, readPortalApiBase } from "@/config/env";
 import {
   PORTAL_COOKIE_NAME,
   PORTAL_SESSION_MAX_AGE_SECONDS,
@@ -151,9 +151,9 @@ function looksLikeLoginPage(text: string): boolean {
 }
 
 function portalRoot(): string {
-  const base = env.apiBaseUrl?.replace(/\/$/, "");
+  const base = readPortalApiBase();
   if (!base) {
-    throw new Error("API_BASE_URL is not configured");
+    throw new Error("COMPLIANCE_API_BASE is not configured");
   }
   return base;
 }

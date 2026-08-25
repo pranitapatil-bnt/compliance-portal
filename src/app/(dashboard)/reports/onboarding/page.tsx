@@ -28,6 +28,7 @@ export default function OnboardingReportPage({
         emptyTitle="No report results"
         emptyDescription="Run a search against /regReportCriteria."
         showExport
+        fromReport
         variant="onboarding"
       />
     </>

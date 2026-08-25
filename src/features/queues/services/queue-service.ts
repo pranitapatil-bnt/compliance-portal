@@ -1,7 +1,7 @@
 import "server-only";
 
-import { portalApiPost } from "@/lib/api/client";
 import { ApiError } from "@/lib/api/errors";
+import { complianceApi } from "@/lib/compliance/client";
 import { logger } from "@/lib/logger";
 
 import {
@@ -13,22 +13,21 @@ import {
   mapTransactionQueue,
   mapTxnApiQueue,
   mapWorkEfficiency,
+  readOrgLabels,
 } from "../mappers";
-import { portalPaths } from "../paths";
 import { buildQueueSearch } from "../search-body";
 import type { QueueQuery, QueueResult } from "../types";
 
 async function postQueue(
-  path: string,
-  query: QueueQuery,
+  load: () => Promise<unknown>,
   map: (payload: unknown) => QueueResult,
+  label: string,
 ): Promise<QueueResult> {
   try {
-    const payload = await portalApiPost(path, buildQueueSearch(query));
-    return map(payload);
+    return map(await load());
   } catch (error) {
     logger.warn(
-      `Queue fetch failed for ${path}: ${error instanceof Error ? error.message : "unknown error"}`,
+      `Queue fetch failed for ${label}: ${error instanceof Error ? error.message : "unknown error"}`,
     );
     return {
       rows: [],
@@ -42,73 +41,120 @@ async function postQueue(
 }
 
 export function getRegistrationQueue(query: QueueQuery = {}) {
-  return postQueue(portalPaths.regQueue, query, mapRegistrationQueue);
+  const body = buildQueueSearch(query);
+  return postQueue(
+    () => complianceApi.regQueue(body),
+    mapRegistrationQueue,
+    "/regQueue",
+  );
 }
 
 export function getPaymentInQueue(query: QueueQuery = {}) {
-  return postQueue(portalPaths.payInQueue, query, mapPaymentInQueue);
+  const body = buildQueueSearch(query);
+  return postQueue(
+    () => complianceApi.payInQueue(body),
+    mapPaymentInQueue,
+    "/payInQueue",
+  );
 }
 
 export function getPaymentOutQueue(query: QueueQuery = {}) {
-  return postQueue(portalPaths.paymentOutQueue, query, mapPaymentOutQueue);
+  const body = buildQueueSearch(query);
+  return postQueue(
+    () => complianceApi.paymentOutQueue(body),
+    mapPaymentOutQueue,
+    "/paymentOutQueue",
+  );
 }
 
 export function getTransactionQueue(query: QueueQuery = {}) {
-  return postQueue(portalPaths.transactionQueue, query, mapTransactionQueue);
+  const body = buildQueueSearch(query);
+  return postQueue(
+    () => complianceApi.transactionQueue(body),
+    mapTransactionQueue,
+    "/transactionQueue",
+  );
 }
 
 export function getTxnApiQueue(query: QueueQuery = {}) {
-  return postQueue(portalPaths.txnApiQueue, query, mapTxnApiQueue);
+  const body = buildQueueSearch(query);
+  return postQueue(
+    () => complianceApi.txnApiQueue(body),
+    mapTxnApiQueue,
+    "/txnApiQueue",
+  );
 }
 
 export function getDataAnonQueue(query: QueueQuery = {}) {
-  return postQueue(portalPaths.dataAnonQueue, query, mapDataAnonQueue);
+  const body = buildQueueSearch(query);
+  return postQueue(
+    () => complianceApi.dataAnonQueue(body),
+    mapDataAnonQueue,
+    "/dataAnonQueue",
+  );
 }
 
 export function getOnboardingReport(query: QueueQuery = {}) {
+  const body = buildQueueSearch({ ...query, fromReport: true });
   return postQueue(
-    portalPaths.regReport,
-    { ...query, fromReport: true },
+    () => complianceApi.regReportCriteria(body),
     mapRegistrationQueue,
+    "/regReportCriteria",
   );
 }
 
 export function getTxnApiReport(query: QueueQuery = {}) {
+  const body = buildQueueSearch({ ...query, fromReport: true });
   return postQueue(
-    portalPaths.txnApiReport,
-    { ...query, fromReport: true },
+    () => complianceApi.txnApiReport(body),
     mapTxnApiQueue,
+    "/txnApiReport",
   );
 }
 
 export function getPaymentsReport(query: QueueQuery = {}) {
+  const body = buildQueueSearch({ ...query, fromReport: true });
   return postQueue(
-    portalPaths.transactionReport,
-    { ...query, fromReport: true },
+    () => complianceApi.transactionReport(body),
     mapTransactionQueue,
+    "/transactionReport",
   );
 }
 
 export function getWorkEfficiencyReport(query: QueueQuery = {}) {
+  const body = buildQueueSearch({ ...query, fromReport: true });
   return postQueue(
-    portalPaths.workEfficiency,
-    { ...query, fromReport: true },
+    () => complianceApi.workEfficiencyReport(body),
     mapWorkEfficiency,
+    "/workEfficiencyReport",
   );
 }
 
 export function getBeneficiaryReport(query: QueueQuery = {}) {
+  const body = buildQueueSearch({ ...query, fromReport: true });
   return postQueue(
-    portalPaths.beneReport,
-    { ...query, fromReport: true },
+    () => complianceApi.beneReportApply(body),
     mapBeneficiaryQueue,
+    "/beneReportApply",
   );
 }
 
 export function getHolisticSearch(query: QueueQuery = {}) {
+  const body = buildQueueSearch({ ...query, fromReport: true });
   return postQueue(
-    portalPaths.regReport,
-    { ...query, fromReport: true },
+    () => complianceApi.regReportCriteria(body),
     mapRegistrationQueue,
+    "/regReportCriteria",
   );
+}
+
+export async function getOrganizationNames(): Promise<string[]> {
+  try {
+    return readOrgLabels(await complianceApi.organizations());
+  } catch (error) {
+    logger.warn(
+      `GET /organizations failed: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+    return [];
+  }
 }

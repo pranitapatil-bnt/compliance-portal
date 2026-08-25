@@ -4,6 +4,13 @@ export type CheckBadge = {
 };
 
 export type RegistrationDetails = {
+  contactId: number | null;
+  accountId: number | null;
+  userResourceId: number | null;
+  orgCode: string;
+  custType: string;
+  preContactStatus: string;
+  preAccountStatus: string;
   clientNumber: string;
   status: string;
   name: string;
@@ -24,6 +31,8 @@ export type RegistrationDetails = {
   lastUpdatedBy: string;
   lastUpdatedOn: string;
   locked: boolean;
+  owned: boolean;
+  lockedBy: string;
   badges: {
     blacklist: CheckBadge;
     eid: CheckBadge;
@@ -36,6 +45,13 @@ export type RegistrationDetails = {
 };
 
 export const emptyDetails: RegistrationDetails = {
+  contactId: null,
+  accountId: null,
+  userResourceId: null,
+  orgCode: "",
+  custType: "PERSONAL",
+  preContactStatus: "PENDING",
+  preAccountStatus: "PENDING",
   clientNumber: "",
   status: "INACTIVE",
   name: "—",
@@ -56,6 +72,8 @@ export const emptyDetails: RegistrationDetails = {
   lastUpdatedBy: "",
   lastUpdatedOn: "",
   locked: false,
+  owned: false,
+  lockedBy: "",
   badges: {
     blacklist: {},
     eid: {},

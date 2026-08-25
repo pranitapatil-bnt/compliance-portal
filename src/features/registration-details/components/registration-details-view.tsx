@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { routes } from "@/constants/routes";
 import { cn } from "@/lib/utils/cn";
 
+import {
+  lockRegistration,
+  readLockId,
+  updateRegistrationProfile,
+} from "../portal-actions";
 import type { CheckBadge, RegistrationDetails } from "../types";
+
+const statuses = ["ACTIVE", "INACTIVE", "REJECTED"] as const;
+type ActionStatus = (typeof statuses)[number];
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -66,13 +75,131 @@ function Accordion({
   );
 }
 
+function asActionStatus(value: string): ActionStatus {
+  const upper = value.toUpperCase();
+  if (upper === "INACTIVE" || upper === "REJECTED" || upper === "ACTIVE") {
+    return upper;
+  }
+  return "ACTIVE";
+}
+
 export function RegistrationDetailsView({
   details,
 }: {
   details: RegistrationDetails;
 }) {
-  const [status, setStatus] = useState(details.status.toUpperCase());
+  const router = useRouter();
+  const [status, setStatus] = useState<ActionStatus>(
+    asActionStatus(details.status),
+  );
+  const [reason, setReason] = useState("");
+  const [comment, setComment] = useState("");
+  const [complianceLog, setComplianceLog] = useState(
+    details.complianceLog === "—" ? "" : details.complianceLog,
+  );
+  const [owned, setOwned] = useState(details.owned);
+  const [locked, setLocked] = useState(details.locked);
+  const [lockedBy, setLockedBy] = useState(details.lockedBy);
+  const [userResourceId, setUserResourceId] = useState(details.userResourceId);
+  const [busy, setBusy] = useState<"lock" | "apply" | "unlock" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
   const inactive = status === "INACTIVE" || status === "REJECTED";
+  const lockedByOther = locked && !owned;
+  const canAct = Boolean(details.contactId) && !lockedByOther && !busy;
+
+  async function ensureLock(): Promise<number | null> {
+    if (owned) {
+      return userResourceId;
+    }
+    if (!details.contactId) {
+      throw new Error("This record is missing a contact id.");
+    }
+    const payload = await lockRegistration({
+      contactId: details.contactId,
+      lock: true,
+      userResourceId,
+    });
+    const lockId = readLockId(payload) ?? userResourceId;
+    setOwned(true);
+    setLocked(true);
+    setLockedBy("You");
+    setUserResourceId(lockId);
+    return lockId;
+  }
+
+  async function handleLock() {
+    setBusy("lock");
+    setError(null);
+    setMessage(null);
+    try {
+      await ensureLock();
+      setMessage("You own this record.");
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Could not lock this record.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleApply(unlock: boolean) {
+    if (!details.contactId) {
+      setError("This record is missing a contact id.");
+      return;
+    }
+    if (details.accountId == null) {
+      setError(
+        "This record is missing an account id. Open it from the onboarding queue and try again.",
+      );
+      return;
+    }
+    if (inactive && !reason) {
+      setError("Pick a reason before setting INACTIVE or REJECTED.");
+      return;
+    }
+
+    setBusy(unlock ? "unlock" : "apply");
+    setError(null);
+    setMessage(null);
+    try {
+      const lockId = await ensureLock();
+      await updateRegistrationProfile({
+        contactId: details.contactId,
+        accountId: details.accountId,
+        orgCode: details.orgCode,
+        custType: details.custType,
+        updatedStatus: status,
+        preContactStatus: details.preContactStatus,
+        preAccountStatus: details.preAccountStatus,
+        comment,
+        complianceLog,
+        reason,
+        userResourceId: lockId,
+      });
+      if (unlock) {
+        await lockRegistration({
+          contactId: details.contactId,
+          lock: false,
+          userResourceId: lockId,
+        });
+        router.push(routes.reg);
+        return;
+      }
+      setMessage("Saved.");
+      router.refresh();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not update this record.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -222,11 +349,12 @@ export function RegistrationDetailsView({
               Update status
             </p>
             <div className="flex overflow-hidden rounded-md border border-[#d5dde5]">
-              {(["ACTIVE", "INACTIVE", "REJECTED"] as const).map((item) => (
+              {statuses.map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => setStatus(item)}
+                  disabled={Boolean(busy) || lockedByOther}
                   className={cn(
                     "flex-1 px-2 py-1.5 text-[11px] font-semibold",
                     status === item &&
@@ -247,8 +375,18 @@ export function RegistrationDetailsView({
               <span className="mb-1.5 block text-[11px] font-medium text-[#8b95a1]">
                 Select a reason
               </span>
-              <select className="h-[34px] w-full rounded-md border border-[#d5dde5] bg-white px-3 text-sm text-[#2c3a4a]">
-                <option>Blacklist</option>
+              <select
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                disabled={Boolean(busy) || lockedByOther}
+                className="h-[34px] w-full rounded-md border border-[#d5dde5] bg-white px-3 text-sm text-[#2c3a4a]"
+              >
+                <option value="">Please select</option>
+                <option value="Blacklist">Blacklist</option>
+                <option value="Sanction">Sanction</option>
+                <option value="EID">EID</option>
+                <option value="Fraud">Fraud</option>
+                <option value="Other">Other</option>
               </select>
             </label>
 
@@ -258,6 +396,9 @@ export function RegistrationDetailsView({
               </span>
               <textarea
                 rows={3}
+                value={comment}
+                onChange={(event) => setComment(event.target.value)}
+                disabled={Boolean(busy) || lockedByOther}
                 className="w-full rounded-md border border-[#d5dde5] px-3 py-2 text-sm"
               />
             </label>
@@ -267,29 +408,58 @@ export function RegistrationDetailsView({
               </span>
               <textarea
                 rows={3}
+                value={complianceLog}
+                onChange={(event) => setComplianceLog(event.target.value)}
+                disabled={Boolean(busy) || lockedByOther}
                 className="w-full rounded-md border border-[#d5dde5] px-3 py-2 text-sm"
               />
             </label>
 
+            {error ? (
+              <p className="mt-3 rounded-md bg-[#fdecec] px-3 py-2 text-xs text-[#c0392b]">
+                {error}
+              </p>
+            ) : null}
+            {message ? (
+              <p className="mt-3 rounded-md bg-[#e8f8ee] px-3 py-2 text-xs text-[#1f9d55]">
+                {message}
+              </p>
+            ) : null}
+
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                disabled
+                disabled={!canAct}
+                onClick={() => void handleApply(false)}
                 className="rounded-md bg-[#3d7ec4] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
-                Apply
+                {busy === "apply" ? "Saving…" : "Apply"}
               </button>
               <button
                 type="button"
-                disabled
+                disabled={!canAct}
+                onClick={() => void handleApply(true)}
                 className="rounded-md bg-[#3d7ec4] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
               >
-                Apply & UNLOCK
+                {busy === "unlock" ? "Saving…" : "Apply & UNLOCK"}
               </button>
             </div>
-            <p className="mt-2 text-xs text-[#3d7ec4]">
-              Lock this record to own it.
-            </p>
+            {lockedByOther ? (
+              <p className="mt-2 text-xs text-[#c0392b]">
+                {lockedBy || "Someone else"} own(s) this record.
+              </p>
+            ) : owned ? (
+              <p className="mt-2 text-xs text-[#1f9d55]">You own this record.</p>
+            ) : (
+              <button
+                type="button"
+                disabled={!details.contactId || Boolean(busy)}
+                onClick={() => void handleLock()}
+                className="mt-2 text-xs text-[#3d7ec4] hover:underline disabled:opacity-50"
+              >
+                {busy === "lock" ? "Locking…" : "Lock this record to own it."}
+              </button>
+            )}
           </section>
 
           {details.lastUpdatedBy ? (
