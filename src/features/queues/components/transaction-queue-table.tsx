@@ -1,9 +1,12 @@
+import Link from "next/link";
+
 import {
   txnApiCheckColumns,
   txnApiCheckHints,
   txnApiQueueColumns,
 } from "@/constants/screens";
 import { cn } from "@/lib/utils/cn";
+import { asRoute } from "@/lib/utils/routes";
 
 import { CheckStatusIcon } from "./check-status-icon";
 import type { QueueResult } from "../types";
@@ -117,6 +120,7 @@ export function TransactionQueueTable({
                   }
                   className={cn(
                     "border-b border-slate-100 last:border-b-0",
+                    row.href && "cursor-pointer hover:bg-[#f3f8fd]",
                     row.owned &&
                       "border-l-[3px] border-l-[#3cb371] bg-[#eef7f2]",
                     faded && "bg-[#f4f6f8] text-[#9aa3b2]",
@@ -146,7 +150,13 @@ export function TransactionQueueTable({
                           linkColumns.has(column) && !faded && "text-[#3d7ec4]",
                         )}
                       >
-                        {cell}
+                        {row.href ? (
+                          <Link href={asRoute(row.href)} className="block">
+                            {cell}
+                          </Link>
+                        ) : (
+                          cell
+                        )}
                       </td>
                     );
                   })}

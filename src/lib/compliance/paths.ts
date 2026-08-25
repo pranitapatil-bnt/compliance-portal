@@ -71,6 +71,7 @@ export const COMPLIANCE_ENDPOINTS = [
   { slug: "transaction-queue", method: "POST", path: "/transactionQueue" },
   { slug: "txn-api-queue", method: "POST", path: "/txnApiQueue" },
   { slug: "txn-api-report", method: "POST", path: "/txnApiReport" },
+  { slug: "txn-api-details", method: "POST", path: "/txnApiDetails" },
   { slug: "txn-api-update", method: "POST", path: "/txnApiUpdate" },
 
   { slug: "reg-report-criteria", method: "POST", path: "/regReportCriteria" },
@@ -256,6 +257,7 @@ export const compliancePath = {
   txnApiQueue: "/txnApiQueue",
   txnApiReport: "/txnApiReport",
   txnApiDetail: "/txnApiDetail",
+  txnApiDetails: "/txnApiDetails",
   dataAnonQueue: "/dataAnonQueue",
   registrationDetails: "/registrationDetails",
   paymentInDetail: "/paymentInDetail",

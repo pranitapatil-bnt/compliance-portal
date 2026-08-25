@@ -26,6 +26,25 @@ const mappers = {
 
 export type QueueLoaderEndpoint = keyof typeof mappers;
 
+function withTxnReportHref(
+  endpoint: QueueLoaderEndpoint,
+  result: QueueResult,
+): QueueResult {
+  if (endpoint !== "txn-api-report") {
+    return result;
+  }
+  return {
+    ...result,
+    rows: result.rows.map((row) => {
+      if (!row.href || row.href.includes("from=")) {
+        return row;
+      }
+      const join = row.href.includes("?") ? "&" : "?";
+      return { ...row, href: `${row.href}${join}from=report` };
+    }),
+  };
+}
+
 type QueueResultLoaderProps = {
   endpoint: QueueLoaderEndpoint;
   query: QueueQuery;
@@ -53,7 +72,7 @@ export function QueueResultLoader({
           buildQueueSearch(parsedQuery),
         );
         if (!cancelled) {
-          setResult(map(payload));
+          setResult(withTxnReportHref(endpoint, map(payload)));
         }
       } catch (error) {
         if (!cancelled) {

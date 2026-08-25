@@ -473,8 +473,16 @@ export function mapTxnApiQueue(payload: unknown): QueueResult {
   const rows = asRecordList(list).map((row, index) => {
     const locked = isLocked(row.locked);
     const lockedBy = readString(row.lockedBy);
+    const paymentId =
+      idPart(row.tradePaymentId) ??
+      idPart(row.paymentId) ??
+      idPart(row.transactionId) ??
+      idPart(row.contractNumber);
     return {
       id: rowId(row, `txn-api-${index}`),
+      contactId: idPart(row.contactId) ?? idPart(row.clientId),
+      type: firstText(row.type) || undefined,
+      href: paymentId ? `/txn-api/${encodeURIComponent(paymentId)}` : undefined,
       locked,
       owned: Boolean(locked && lockedBy && userName && lockedBy === userName),
       lockedBy,

@@ -34,6 +34,7 @@ import type {
   FraudRingResponse,
   FXTicketResponse,
   FxTicketPortalRequest,
+  JsonObject,
   LegalEntityDto,
   LockResourceRequest,
   LockResourceResponse,
@@ -255,6 +256,11 @@ export const complianceApi = {
       queueBody(body),
       options,
     ),
+  txnApiDetails: (
+    body: { transactionId: string; source?: string } & JsonObject,
+    options?: CallOptions,
+  ) =>
+    postJson<TxnApiDetailsDto>(compliancePath.txnApiDetails, body, options),
   txnApiUpdate: (body: TxnApiUpdateRequest, options?: CallOptions) =>
     postJson<TxnApiDetailsDto>("/txnApiUpdate", body, options),
 
