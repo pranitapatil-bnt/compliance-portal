@@ -5,11 +5,20 @@ export function parseCheckStatus(value: string | undefined): CheckStatus {
     value
       ?.trim()
       .toUpperCase()
-      .replace(/[\s-]+/g, "_") ?? "";
+      .replace(/[\s\-/]+/g, "_") ?? "";
   if (normalized === "PASS") {
     return "pass";
   }
-  if (normalized === "NOT_REQUIRED" || normalized === "NOT_PERFORMED") {
+  if (
+    normalized === "NOT_REQUIRED" ||
+    normalized === "NOT_PERFORMED" ||
+    normalized === "NOT_APPLICABLE" ||
+    normalized === "NOT_AVAILABLE" ||
+    normalized === "NA" ||
+    normalized === "N_A" ||
+    normalized === "NONE" ||
+    normalized === "NULL"
+  ) {
     return "na";
   }
   if (

@@ -3,6 +3,7 @@ import { routes } from "@/constants/routes";
 
 import { OnboardingQueueScreen } from "./onboarding-queue-screen";
 import { PaymentsQueueScreen } from "./payments-queue-screen";
+import { TransactionQueueScreen } from "./transaction-queue-screen";
 import { readQueueQuery } from "../search-body";
 import { getOrganizationNames } from "../services/queue-service";
 import type { QueueQuery, QueueResult, QueueSearchParams } from "../types";
@@ -15,7 +16,7 @@ type QueuePageBodyProps = {
   emptyDescription: string;
   showExport?: boolean;
   fromReport?: boolean;
-  variant?: "default" | "onboarding" | "payments";
+  variant?: "default" | "onboarding" | "payments" | "transaction";
 };
 
 export async function QueuePageBody({
@@ -61,6 +62,19 @@ export async function QueuePageBody({
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsPayments : routes.transactions}
+        result={result}
+      />
+    );
+  }
+
+  if (variant === "transaction") {
+    const result = await load(query);
+    return (
+      <TransactionQueueScreen
+        query={query}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+        action={fromReport ? routes.reportsTransactions : routes.txnApi}
         result={result}
       />
     );

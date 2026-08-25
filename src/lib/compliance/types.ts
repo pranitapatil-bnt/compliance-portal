@@ -364,8 +364,32 @@ export type TransactionQueueDto = {
   errorMessage?: string | null;
 };
 
+export type TxnApiQueueItem = {
+  tradePaymentId: string | number | null;
+  contractNumber: string | null;
+  date: string | null;
+  contactName: string | null;
+  type: string | null;
+  organization: string | null;
+  amount: string | number | null;
+  overallStatus: string | null;
+  stp: string | boolean | null;
+  initialStatus: string | null;
+  blacklist: string | null;
+  sanction: string | null;
+  fraugster: string | null;
+  customCheck: string | null;
+  contactId: number | null;
+  transactionId: string | null;
+  locked: boolean;
+  lockedBy: string | null;
+};
+
 export type TxnApiQueueSearchCriteria = QueueSearchRequest;
-export type TxnApiQueueDto = PortalErrorFields & JsonObject;
+export type TxnApiQueueDto = PortalErrorFields & {
+  transactions?: TxnApiQueueItem[];
+  txnApiQueue?: TxnApiQueueItem[];
+} & JsonObject;
 export type TxnApiUpdateRequest = JsonObject;
 export type TxnApiDetailsDto = PortalErrorFields & JsonObject;
 export type TransactionReportDto = TransactionQueueDto & JsonObject;

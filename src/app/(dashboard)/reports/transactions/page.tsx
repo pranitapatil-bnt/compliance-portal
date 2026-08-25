@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { transactionColumns } from "@/constants/screens";
+import { txnApiQueueColumns } from "@/constants/screens";
 import { QueuePageBody } from "@/features/queues";
 import { getTxnApiReport } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
@@ -24,10 +24,12 @@ export default function TransactionReportPage({
       <QueuePageBody
         searchParams={searchParams}
         load={getTxnApiReport}
-        columns={transactionColumns}
+        columns={txnApiQueueColumns}
         emptyTitle="No report results"
         emptyDescription="Run a search against /txnApiReport."
         showExport
+        fromReport
+        variant="transaction"
       />
     </>
   );

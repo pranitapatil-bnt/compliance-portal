@@ -77,6 +77,7 @@ function rowId(row: Record<string, unknown>, fallback: string): string {
   return (
     idPart(row.paymentInId) ??
     idPart(row.paymentOutId) ??
+    idPart(row.tradePaymentId) ??
     idPart(row.recordId) ??
     idPart(row.transactionId) ??
     idPart(row.contactId) ??
@@ -89,6 +90,40 @@ function rowId(row: Record<string, unknown>, fallback: string): string {
 function checkCell(value: unknown): string {
   const text = readString(value)?.trim();
   return text && text.length > 0 ? text.toUpperCase() : "FAIL";
+}
+
+function checkCellOrNa(value: unknown): string {
+  if (typeof value === "boolean") {
+    return value ? "PASS" : "FAIL";
+  }
+  const text = readString(value)?.trim();
+  return text && text.length > 0 ? text.toUpperCase() : "NOT_REQUIRED";
+}
+
+function stpCell(value: unknown): string {
+  if (value === true || value === "true" || value === "Y" || value === "Yes") {
+    return "Y";
+  }
+  if (value === false || value === "false" || value === "N" || value === "No") {
+    return "N";
+  }
+  const text = readString(value)?.trim();
+  return text && text.length > 0 ? text : "—";
+}
+
+function amountCell(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toFixed(2);
+  }
+  const text = readString(value)?.trim();
+  return text && text.length > 0 ? text : "—";
+}
+
+function blankCell(value: unknown): string {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  return readString(value)?.trim() ?? "";
 }
 
 function onboardingDateCell(value: unknown): string {
@@ -312,19 +347,40 @@ export function mapTransactionQueue(payload: unknown): QueueResult {
 }
 
 export function mapTxnApiQueue(payload: unknown): QueueResult {
-  const rows = asRecordList(
-    isRecord(payload) ? payload.transactions : payload,
-  ).map((row, index) => ({
-    id: rowId(row, `txn-api-${index}`),
-    cells: [
-      cell(row.tradePaymentId ?? row.contractNumber),
-      cell(row.date),
-      cell(row.contactName),
-      cell(row.type),
-      cell(row.amount),
-      cell(row.overallStatus),
-    ],
-  }));
+  const userName = currentUserName(payload);
+  const list = isRecord(payload)
+    ? (payload.transactions ?? payload.txnApiQueue ?? payload)
+    : payload;
+  const rows = asRecordList(list).map((row, index) => {
+    const locked = isLocked(row.locked);
+    const lockedBy = readString(row.lockedBy);
+    return {
+      id: rowId(row, `txn-api-${index}`),
+      locked,
+      owned: Boolean(locked && lockedBy && userName && lockedBy === userName),
+      lockedBy,
+      cells: [
+        cell(
+          row.tradePaymentId ??
+            row.paymentId ??
+            row.transactionId ??
+            row.contractNumber,
+        ),
+        cell(row.date),
+        cell(row.contactName),
+        cell(row.type),
+        cell(firstText(row.organization, row.organisation, row.org)),
+        amountCell(row.amount),
+        cell(firstText(row.overallStatus, row.status)),
+        stpCell(row.stp ?? row.stpFlag ?? row.isStp),
+        blankCell(row.initialStatus),
+        checkCellOrNa(row.blacklist),
+        checkCellOrNa(row.sanction),
+        checkCellOrNa(row.fraugster),
+        checkCellOrNa(row.customCheck),
+      ],
+    };
+  });
   return asQueue(payload, rows);
 }
 

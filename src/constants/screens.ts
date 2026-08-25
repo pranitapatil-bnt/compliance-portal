@@ -36,6 +36,34 @@ export const transactionColumns = [
   "Status",
 ] as const;
 
+export const txnApiQueueColumns = [
+  "Payment ID",
+  "Date",
+  "Client",
+  "Type",
+  "Org",
+  "Amount",
+  "Status",
+  "STP",
+  "InitialStatus",
+  "B",
+  "S",
+  "F",
+  "C",
+] as const;
+
+export const txnApiCheckColumns = ["B", "S", "F", "C"] as const;
+
+export const txnApiCheckHints: Record<
+  (typeof txnApiCheckColumns)[number],
+  string
+> = {
+  B: "Blacklist",
+  S: "Sanction",
+  F: "FraudPredict",
+  C: "CustomCheck",
+};
+
 export const paymentColumns = [
   "Txn #",
   "Date",
