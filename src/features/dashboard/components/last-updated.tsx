@@ -1,25 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-function nowTime() {
-  return new Date().toLocaleTimeString("en-GB", { hour12: false });
-}
+type LastUpdatedProps = {
+  time?: string;
+};
 
-export function LastUpdated() {
-  const [time, setTime] = useState<string | null>(null);
-
-  useEffect(() => {
-    setTime(nowTime());
-  }, []);
+export function LastUpdated({ time }: LastUpdatedProps) {
+  const router = useRouter();
 
   return (
     <p className="text-sm leading-relaxed text-navy-muted">
-      Last updated @ {time ?? "--:--:--"}{" "}
+      Last updated @ {time || "--:--:--"}{" "}
       <button
         type="button"
         className="font-semibold text-navy hover:underline"
-        onClick={() => setTime(nowTime())}
+        onClick={() => router.refresh()}
       >
         Refresh
       </button>

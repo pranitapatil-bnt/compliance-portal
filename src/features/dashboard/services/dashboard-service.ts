@@ -5,17 +5,60 @@ import {
   getPaymentOutQueue,
   getRegistrationQueue,
 } from "@/features/queues/services/queue-service";
+import { ApiError } from "@/lib/api/errors";
+import { complianceApi } from "@/lib/compliance/client";
+import { logger } from "@/lib/logger";
 
-import { dashboardPlaceholder, type DashboardData } from "../data";
+import { emptyDashboard, type DashboardData } from "../data";
+import { parseDashboardHtml } from "../parse-html";
 
 function percent(part: number, whole: number): number {
   if (whole <= 0) {
     return 0;
   }
-  return Math.round((part / whole) * 100);
+  return Math.floor((part * 100) / whole);
 }
 
-export async function loadDashboardData(): Promise<{
+function clockNow(): string {
+  return new Date().toLocaleTimeString("en-GB", { hour12: false });
+}
+
+function withQueueTotals(
+  base: DashboardData,
+  personalTotal: number,
+  corporateTotal: number,
+  inwardTotal: number,
+  outwardTotal: number,
+): DashboardData {
+  const onboardingTotal = personalTotal + corporateTotal;
+  return {
+    ...base,
+    onboardingTotal,
+    inwardTotal,
+    outwardTotal,
+    refreshOn: base.refreshOn || clockNow(),
+    personal: {
+      ...base.personal,
+      total: personalTotal,
+      percent: percent(personalTotal, onboardingTotal),
+    },
+    corporate: {
+      ...base.corporate,
+      total: corporateTotal,
+      percent: percent(corporateTotal, onboardingTotal),
+    },
+    inward: {
+      ...base.inward,
+      total: inwardTotal,
+    },
+    outward: {
+      ...base.outward,
+      total: outwardTotal,
+    },
+  };
+}
+
+async function loadQueueFallback(error?: string): Promise<{
   data: DashboardData;
   error?: string;
 }> {
@@ -27,41 +70,46 @@ export async function loadDashboardData(): Promise<{
       getPaymentOutQueue(),
     ]);
 
-  const personalTotal = personalQueue.total;
-  const corporateTotal = corporateQueue.total;
-  const onboardingTotal = personalTotal + corporateTotal;
-  const error = [
-    personalQueue.error,
-    corporateQueue.error,
-    inwardQueue.error,
-    outwardQueue.error,
-  ].find((message): message is string => Boolean(message));
-
   return {
-    error,
-    data: {
-      ...dashboardPlaceholder,
-      onboardingTotal,
-      inwardTotal: inwardQueue.total,
-      outwardTotal: outwardQueue.total,
-      personal: {
-        ...dashboardPlaceholder.personal,
-        total: personalTotal,
-        percent: percent(personalTotal, onboardingTotal),
-      },
-      corporate: {
-        ...dashboardPlaceholder.corporate,
-        total: corporateTotal,
-        percent: percent(corporateTotal, onboardingTotal),
-      },
-      inward: {
-        ...dashboardPlaceholder.inward,
-        total: inwardQueue.total,
-      },
-      outward: {
-        ...dashboardPlaceholder.outward,
-        total: outwardQueue.total,
-      },
-    },
+    error:
+      error ??
+      [
+        personalQueue.error,
+        corporateQueue.error,
+        inwardQueue.error,
+        outwardQueue.error,
+      ].find((message): message is string => Boolean(message)),
+    data: withQueueTotals(
+      emptyDashboard(),
+      personalQueue.total,
+      corporateQueue.total,
+      inwardQueue.total,
+      outwardQueue.total,
+    ),
   };
+}
+
+export async function loadDashboardData(): Promise<{
+  data: DashboardData;
+  error?: string;
+}> {
+  try {
+    const html = await complianceApi.dashboardPage();
+    const parsed = parseDashboardHtml(html);
+    if (parsed) {
+      return { data: parsed };
+    }
+    logger.warn("Java dashboard HTML did not match expected landing page");
+  } catch (error) {
+    logger.warn(
+      `Dashboard HTML fetch failed: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+    return loadQueueFallback(
+      error instanceof ApiError
+        ? error.message
+        : "Could not load dashboard data from the Java portal.",
+    );
+  }
+
+  return loadQueueFallback();
 }

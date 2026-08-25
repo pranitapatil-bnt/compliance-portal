@@ -1,6 +1,6 @@
 import "server-only";
 
-import { portalApiGet, portalApiPost } from "@/lib/api/client";
+import { portalApiGet, portalApiHtml, portalApiPost } from "@/lib/api/client";
 import type { PortalCallOptions } from "@/lib/api/client";
 
 import { compliancePath } from "./paths";
@@ -82,6 +82,8 @@ function queueBody(body?: Partial<QueueSearchRequest> | null) {
 }
 
 export const complianceApi = {
+  dashboardPage: (options?: CallOptions) =>
+    portalApiHtml(compliancePath.dashboard, options),
   organizations: (options?: CallOptions) =>
     getJson<OrganizationDto[]>(compliancePath.organizations, options),
   legalEntities: (options?: CallOptions) =>

@@ -63,14 +63,14 @@ export function OnboardingColumn({ kind, data }: OnboardingColumnProps) {
         <h4 className="mb-2 text-sm font-medium text-navy">
           {kind} registration by legal entity
         </h4>
-        <ChartPlaceholder kind="bar" />
+        <ChartPlaceholder kind="bar" bars={data.legalEntities} />
       </section>
 
       <section className="border-b border-navy-line px-4 py-4">
         <h4 className="mb-2 text-center text-sm font-medium text-navy">
           {kind} registration fulfilment (Today)
         </h4>
-        <ChartPlaceholder kind="donut" />
+        <ChartPlaceholder kind="donut" slices={data.fulfilment.graph} />
         <StatRow
           items={[
             {

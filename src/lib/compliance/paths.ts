@@ -248,6 +248,7 @@ export function findComplianceEndpoint(
 }
 
 export const compliancePath = {
+  dashboard: "/",
   regQueue: "/regQueue",
   payInQueue: "/payInQueue",
   paymentOutQueue: "/paymentOutQueue",

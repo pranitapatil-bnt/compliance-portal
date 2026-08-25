@@ -90,6 +90,7 @@ export async function DashboardHome() {
         <InfoStack
           onboardingTotal={data.onboardingTotal}
           href={dashboardLinks.onboarding}
+          refreshOn={data.refreshOn}
         />
       </div>
 
@@ -190,7 +191,12 @@ export async function DashboardHome() {
             ]}
           />
         </div>
-        <MetricsCard inward={data.inward} outward={data.outward} />
+        <MetricsCard
+          personal={data.personal}
+          corporate={data.corporate}
+          inward={data.inward}
+          outward={data.outward}
+        />
       </div>
     </div>
   );

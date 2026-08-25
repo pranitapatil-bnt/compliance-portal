@@ -165,9 +165,11 @@ export function QueueLeaderboard({ items }: { items: readonly RankItem[] }) {
 export function InfoStack({
   onboardingTotal,
   href,
+  refreshOn,
 }: {
   onboardingTotal: number;
   href: string;
+  refreshOn?: string;
 }) {
   return (
     <div className="flex h-full flex-col gap-5">
@@ -188,7 +190,7 @@ export function InfoStack({
           </span>
           <h2 className="text-base font-semibold text-navy">Did you know?</h2>
         </div>
-        <LastUpdated />
+        <LastUpdated time={refreshOn} />
       </Card>
       <Link
         href={asRoute(href)}
@@ -322,7 +324,7 @@ export function GeographyPanel({
         <h4 className="mt-3 mb-1 text-center text-sm font-medium text-navy">
           PERSONAL registration by legal entity
         </h4>
-        <ChartPlaceholder kind="bar" compact />
+        <ChartPlaceholder kind="bar" compact bars={personal.legalEntities} />
       </section>
       <section>
         <h3 className="mb-2 text-center text-sm font-medium text-navy">
@@ -333,7 +335,7 @@ export function GeographyPanel({
         <h4 className="mt-3 mb-1 text-center text-sm font-medium text-navy">
           CORPORATE registration by legal entity
         </h4>
-        <ChartPlaceholder kind="bar" compact />
+        <ChartPlaceholder kind="bar" compact bars={corporate.legalEntities} />
       </section>
     </Card>
   );
@@ -365,9 +367,13 @@ export function TimelineSchedule({ rows }: { rows: readonly ScheduleRow[] }) {
 }
 
 export function MetricsCard({
+  personal,
+  corporate,
   inward,
   outward,
 }: {
+  personal: CustomerSlice;
+  corporate: CustomerSlice;
   inward: PaymentSlice;
   outward: PaymentSlice;
 }) {
@@ -379,31 +385,47 @@ export function MetricsCard({
           <h3 className="mb-1 text-[11px] font-medium text-navy">
             PERSONAL registration fulfilment (Today)
           </h3>
-          <ChartPlaceholder kind="donut" compact />
+          <ChartPlaceholder
+            kind="donut"
+            compact
+            slices={personal.fulfilment.graph}
+          />
         </section>
         <section className="text-center">
           <h3 className="mb-1 text-[11px] font-medium text-navy">
             CORPORATE registration fulfilment (Today)
           </h3>
-          <ChartPlaceholder kind="donut" compact />
+          <ChartPlaceholder
+            kind="donut"
+            compact
+            slices={corporate.fulfilment.graph}
+          />
         </section>
         <section className="text-center">
           <h3 className="mb-1 text-[11px] font-medium text-navy">
             Inward fulfilment (Today)
           </h3>
-          <ChartPlaceholder kind="donut" compact />
+          <ChartPlaceholder
+            kind="donut"
+            compact
+            slices={inward.fulfilment.graph}
+          />
         </section>
         <section className="text-center">
           <h3 className="mb-1 text-[11px] font-medium text-navy">
             Outward fulfilment (Today)
           </h3>
-          <ChartPlaceholder kind="donut" compact />
+          <ChartPlaceholder
+            kind="donut"
+            compact
+            slices={outward.fulfilment.graph}
+          />
         </section>
       </div>
       <h3 className="mt-3 mb-1 text-center text-sm font-medium text-navy">
         Inward by legal entity
       </h3>
-      <ChartPlaceholder kind="bar" compact />
+      <ChartPlaceholder kind="bar" compact bars={inward.legalEntities} />
       <p className="mb-3 text-center text-sm">
         <Link
           href={asRoute(dashboardLinks.inward)}
@@ -415,7 +437,7 @@ export function MetricsCard({
       <h3 className="mb-1 text-center text-sm font-medium text-navy">
         Outward by legal entity
       </h3>
-      <ChartPlaceholder kind="bar" compact />
+      <ChartPlaceholder kind="bar" compact bars={outward.legalEntities} />
       <p className="text-center text-sm">
         <Link
           href={asRoute(dashboardLinks.outward)}

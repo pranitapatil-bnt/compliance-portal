@@ -38,6 +38,16 @@ function looksLikeLoginPage(text: string): boolean {
   );
 }
 
+function looksLikeAuthChallenge(text: string): boolean {
+  const sample = text.slice(0, 2000).toLowerCase();
+  return (
+    sample.includes("samlrequest") ||
+    sample.includes("kc-form-login") ||
+    sample.includes("sign in to ethos") ||
+    sample.includes("sign in to")
+  );
+}
+
 function parseJson(text: string): unknown {
   const trimmed = text.replace(/^\uFEFF/, "").trim();
   const lenient = trimmed
@@ -251,6 +261,40 @@ export async function portalApiPost(
   options: PortalCallOptions = {},
 ): Promise<unknown> {
   return portalRequest("POST", path, { ...options, payload });
+}
+
+export async function portalApiHtml(
+  path: string,
+  options: PortalCallOptions = {},
+): Promise<string> {
+  const baseUrl = requirePortalBase();
+
+  const get = async (cookie: string): Promise<string> => {
+    const headers: Record<string, string> = {
+      Accept: "text/html,application/xhtml+xml",
+    };
+    if (cookie) {
+      headers.Cookie = cookie;
+    }
+
+    const response = await requestRaw(`${baseUrl}${path}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (isRedirectStatus(response.status)) {
+      throw new ApiError(LOGIN_HINT, 401);
+    }
+    if (looksLikeAuthChallenge(response.text) || response.status === 401) {
+      throw new ApiError(LOGIN_HINT, 401);
+    }
+    if (!response.ok) {
+      throw new ApiError(`GET ${path} failed`, response.status);
+    }
+    return response.text;
+  };
+
+  return withPortalRetry(get, options.cookie);
 }
 
 export async function portalApiForm(

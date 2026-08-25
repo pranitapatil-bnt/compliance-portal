@@ -43,13 +43,13 @@ export function PaymentColumn({ kind, data }: PaymentColumnProps) {
       <div className="overflow-hidden rounded-2xl border border-navy-line bg-white shadow-[0_8px_24px_rgba(46,26,122,0.05)]">
         <section className="border-b border-navy-line px-4 py-4 text-center">
           <h3 className="mb-2 text-sm font-medium text-navy">{labels.legal}</h3>
-          <ChartPlaceholder kind="bar" />
+          <ChartPlaceholder kind="bar" bars={data.legalEntities} />
         </section>
         <section className="border-b border-navy-line px-4 py-4">
           <h3 className="mb-2 text-center text-sm font-medium text-navy">
             {labels.fulfil}
           </h3>
-          <ChartPlaceholder kind="donut" />
+          <ChartPlaceholder kind="donut" slices={data.fulfilment.graph} />
           <StatRow
             items={[
               {
