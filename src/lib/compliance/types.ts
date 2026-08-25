@@ -482,9 +482,30 @@ export type RepeatCheckRequest = {
 export type BaseRepeatCheckResponse = PortalErrorFields & JsonObject;
 export type BaseResponse = PortalErrorFields & JsonObject;
 
+export type DataAnonymisationItem = {
+  tradeAccountNum: string | null;
+  crmAccountID: string | null;
+  clientNumber: string | null;
+  contactName: string | null;
+  type: string | null;
+  requestedDate: string | null;
+  requestDate: string | null;
+  requestedBy: string | null;
+  requestBy: string | null;
+  approvedDate: string | null;
+  approvedBy: string | null;
+  dataAnonStatus: string | null;
+  contactId: number | null;
+  accountId: number | null;
+};
+
 export type DataAnonymisationSearchCriteria = QueueSearchRequest & JsonObject;
 export type DataAnonymisationDataRequest = JsonObject;
-export type DataAnonymisationDto = PortalErrorFields & JsonObject;
+export type DataAnonymisationDto = PortalErrorFields & {
+  dataAnonymisation?: DataAnonymisationItem[];
+  dataAnonymization?: DataAnonymisationItem[];
+  dataAnonQueue?: DataAnonymisationItem[];
+} & JsonObject;
 export type DataAnonymisationResponse = PortalErrorFields & JsonObject;
 
 export type SavedSearchRequest = QueueSearchRequest & {

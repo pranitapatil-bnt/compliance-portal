@@ -106,10 +106,16 @@ export const paymentsCheckHints: Record<
 };
 
 export const dataAnonColumns = [
-  "Request",
-  "Client",
+  "Client number",
+  "Client name",
+  "Type",
+  "Request date",
+  "Request by",
+  "Approved date",
+  "Approved by",
   "Status",
-  "Requested on",
+  "Confirm",
+  "Cancel",
 ] as const;
 
 export const beneficiaryColumns = [

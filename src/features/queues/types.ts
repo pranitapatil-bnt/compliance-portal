@@ -9,6 +9,7 @@ export type QueueRow = {
   contactId?: string;
   type?: string;
   href?: string;
+  status?: string;
 };
 
 export type QueueResult = {

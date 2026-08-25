@@ -7,8 +7,10 @@ import { getDataAnonQueue } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
 
 export const metadata: Metadata = {
-  title: "Data anonymisation",
+  title: "Data Anonymisation",
 };
+
+export const dynamic = "force-dynamic";
 
 export default function DataAnonPage({
   searchParams,
@@ -17,16 +19,14 @@ export default function DataAnonPage({
 }) {
   return (
     <>
-      <PageHeader
-        title="Data anonymisation"
-        description="GDPR requests to initiate, approve, or cancel PII scrubbing."
-      />
+      <PageHeader title="Data Anonymisation" />
       <QueuePageBody
         searchParams={searchParams}
         load={getDataAnonQueue}
         columns={dataAnonColumns}
         emptyTitle="No anonymisation requests"
         emptyDescription="Requests will appear here from /dataAnonQueue."
+        variant="data-anon"
       />
     </>
   );

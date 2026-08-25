@@ -174,6 +174,125 @@ function firstText(...values: unknown[]): string {
   return "";
 }
 
+function padDatePart(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateTime(date: Date): string {
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return `${padDatePart(date.getDate())}/${padDatePart(date.getMonth() + 1)}/${date.getFullYear()} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+}
+
+function formatAnonValue(value: unknown): string {
+  if (value == null || value === "") {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value.trim();
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value > 1_000_000_000) {
+      const ms = value > 1e12 ? value : value * 1000;
+      return formatDateTime(new Date(ms));
+    }
+    return String(value);
+  }
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  if (
+    Array.isArray(value) &&
+    value.length >= 3 &&
+    value.every((part) => typeof part === "number")
+  ) {
+    const year = value[0];
+    const month = value[1];
+    const day = value[2];
+    if (year == null || month == null || day == null) {
+      return "";
+    }
+    const hour = value[3] ?? 0;
+    const minute = value[4] ?? 0;
+    const second = value[5] ?? 0;
+    return formatDateTime(new Date(year, month - 1, day, hour, minute, second));
+  }
+  if (isRecord(value)) {
+    return (
+      firstText(
+        value.userName,
+        value.username,
+        value.name,
+        value.date,
+        value.dateTime,
+        value.value,
+      ) || formatAnonValue(value.time)
+    );
+  }
+  return "";
+}
+
+function rowValue(
+  row: Record<string, unknown>,
+  aliases: readonly string[],
+): unknown {
+  for (const alias of aliases) {
+    if (alias in row && row[alias] != null && row[alias] !== "") {
+      return row[alias];
+    }
+  }
+  const lower = new Map(
+    Object.keys(row).map((key) => [key.toLowerCase(), row[key]]),
+  );
+  for (const alias of aliases) {
+    const match = lower.get(alias.toLowerCase());
+    if (match != null && match !== "") {
+      return match;
+    }
+  }
+  return undefined;
+}
+
+function findByKeyParts(
+  row: Record<string, unknown>,
+  include: readonly string[],
+  exclude: readonly string[] = [],
+): string {
+  for (const [key, value] of Object.entries(row)) {
+    const lower = key.toLowerCase();
+    if (!include.every((part) => lower.includes(part))) {
+      continue;
+    }
+    if (exclude.some((part) => lower.includes(part))) {
+      continue;
+    }
+    const formatted = formatAnonValue(value);
+    if (formatted) {
+      return formatted;
+    }
+  }
+  return "";
+}
+
+function anonCell(
+  row: Record<string, unknown>,
+  aliases: readonly string[],
+  fallback?: { include: readonly string[]; exclude?: readonly string[] },
+): string {
+  const formatted = formatAnonValue(rowValue(row, aliases));
+  if (formatted.length > 0) {
+    return formatted;
+  }
+  if (fallback) {
+    const found = findByKeyParts(row, fallback.include, fallback.exclude ?? []);
+    if (found) {
+      return found;
+    }
+  }
+  return "—";
+}
+
 function currentUserName(payload: unknown): string | undefined {
   if (!isRecord(payload) || !isRecord(payload.user)) {
     return undefined;
@@ -385,17 +504,105 @@ export function mapTxnApiQueue(payload: unknown): QueueResult {
 }
 
 export function mapDataAnonQueue(payload: unknown): QueueResult {
-  const rows = asRecordList(
-    isRecord(payload) ? payload.dataAnonymisation : payload,
-  ).map((row, index) => ({
-    id: rowId(row, `anon-${index}`),
-    cells: [
-      cell(row.tradeAccountNum ?? row.crmAccountID),
-      cell(row.contactName),
-      cell(row.dataAnonStatus ?? row.complianceStatus),
-      cell(row.requestDate ?? row.registeredOn),
-    ],
-  }));
+  const list = isRecord(payload)
+    ? (payload.dataAnonymisation ??
+      payload.dataAnonymization ??
+      payload.dataAnonQueue ??
+      payload)
+    : payload;
+  const rows = asRecordList(list).map((row, index) => {
+    const status = firstText(
+      row.dataAnonStatus,
+      row.complianceStatus,
+      row.status,
+    );
+    return {
+      id: rowId(row, `anon-${index}`),
+      contactId: idPart(row.contactId) ?? idPart(row.clientId),
+      type: firstText(row.type, row.custType) || "PERSONAL",
+      status,
+      cells: [
+        cell(
+          row.tradeAccountNum ??
+            row.crmAccountID ??
+            row.clientNumber ??
+            row.clientNo,
+        ),
+        cell(firstText(row.contactName, row.clientName)),
+        cell(firstText(row.type, row.custType) || "PERSONAL"),
+        anonCell(
+          row,
+          [
+            "requestedDate",
+            "requestDate",
+            "requestedOn",
+            "requestOn",
+            "requestedDateTime",
+            "requestDateTime",
+            "dataAnonRequestedDate",
+            "dataAnonRequestDate",
+            "daRequestedDate",
+            "dateRequested",
+            "createdOn",
+            "createdDate",
+            "userResourceCreatedOn",
+            "registeredOn",
+          ],
+          { include: ["request", "date"], exclude: ["approv"] },
+        ),
+        anonCell(
+          row,
+          [
+            "requestedBy",
+            "requestBy",
+            "requestedByUser",
+            "requestedByName",
+            "requestedUser",
+            "requestUser",
+            "requester",
+            "requesterName",
+            "dataAnonRequestedBy",
+            "daRequestedBy",
+            "createdBy",
+            "createdByUser",
+          ],
+          { include: ["request", "by"], exclude: ["date", "approv"] },
+        ),
+        anonCell(
+          row,
+          [
+            "approvedDate",
+            "approvedOn",
+            "approvedDateTime",
+            "dateApproved",
+            "dataAnonApprovedDate",
+            "daApprovedDate",
+            "updatedOn",
+            "modifiedOn",
+            "userResourceWorkflowTime",
+          ],
+          { include: ["approv", "date"] },
+        ),
+        anonCell(
+          row,
+          [
+            "approvedBy",
+            "approvedByUser",
+            "approvedByName",
+            "approver",
+            "approverName",
+            "approvedUser",
+            "dataAnonApprovedBy",
+            "daApprovedBy",
+            "updatedBy",
+            "modifiedBy",
+          ],
+          { include: ["approv", "by"], exclude: ["date"] },
+        ),
+        cell(status),
+      ],
+    };
+  });
   return asQueue(payload, rows);
 }
 

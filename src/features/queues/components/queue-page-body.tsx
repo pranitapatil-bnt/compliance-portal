@@ -1,6 +1,7 @@
 import { WorkQueueScreen } from "@/components/shared/work-queue-screen";
 import { routes } from "@/constants/routes";
 
+import { DataAnonQueueScreen } from "./data-anon-queue-screen";
 import { OnboardingQueueScreen } from "./onboarding-queue-screen";
 import { PaymentsQueueScreen } from "./payments-queue-screen";
 import { TransactionQueueScreen } from "./transaction-queue-screen";
@@ -16,7 +17,7 @@ type QueuePageBodyProps = {
   emptyDescription: string;
   showExport?: boolean;
   fromReport?: boolean;
-  variant?: "default" | "onboarding" | "payments" | "transaction";
+  variant?: "default" | "onboarding" | "payments" | "transaction" | "data-anon";
 };
 
 export async function QueuePageBody({
@@ -75,6 +76,17 @@ export async function QueuePageBody({
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsTransactions : routes.txnApi}
+        result={result}
+      />
+    );
+  }
+
+  if (variant === "data-anon") {
+    const result = await load(query);
+    return (
+      <DataAnonQueueScreen
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
         result={result}
       />
     );
