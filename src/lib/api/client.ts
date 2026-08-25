@@ -121,7 +121,10 @@ async function request(
     throw new ApiError("API_BASE_URL is not configured", 500);
   }
 
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Accept-Encoding": "gzip, deflate",
+  };
   if (options.ajax) {
     headers["X-Requested-With"] = "XMLHttpRequest";
   }

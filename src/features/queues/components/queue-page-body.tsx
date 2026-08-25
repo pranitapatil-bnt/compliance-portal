@@ -34,10 +34,7 @@ export async function QueuePageBody({
   const query = readQueueQuery(params, { fromReport });
 
   if (variant === "onboarding") {
-    const [organizations, result] = await Promise.all([
-      getOrganizationNames(),
-      load(query),
-    ]);
+    const organizations = await getOrganizationNames();
     return (
       <OnboardingQueueScreen
         query={query}
@@ -46,16 +43,12 @@ export async function QueuePageBody({
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsOnboarding : routes.reg}
         endpoint={fromReport ? "reg-report-criteria" : "reg-queue"}
-        result={result}
       />
     );
   }
 
   if (variant === "payments") {
-    const [organizations, result] = await Promise.all([
-      getOrganizationNames(),
-      load(query),
-    ]);
+    const organizations = await getOrganizationNames();
     return (
       <PaymentsQueueScreen
         query={query}
@@ -63,31 +56,29 @@ export async function QueuePageBody({
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsPayments : routes.transactions}
-        result={result}
+        endpoint={fromReport ? "transaction-report" : "transaction-queue"}
       />
     );
   }
 
   if (variant === "transaction") {
-    const result = await load(query);
     return (
       <TransactionQueueScreen
         query={query}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
         action={fromReport ? routes.reportsTransactions : routes.txnApi}
-        result={result}
+        endpoint={fromReport ? "txn-api-report" : "txn-api-queue"}
       />
     );
   }
 
   if (variant === "data-anon") {
-    const result = await load(query);
     return (
       <DataAnonQueueScreen
+        query={query}
         emptyTitle={emptyTitle}
         emptyDescription={emptyDescription}
-        result={result}
       />
     );
   }

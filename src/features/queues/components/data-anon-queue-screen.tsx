@@ -1,22 +1,30 @@
+"use client";
+
 import { DataAnonQueueTable } from "./data-anon-queue-table";
-import type { QueueResult } from "../types";
+import { QueueResultLoader } from "./queue-result-loader";
+import type { QueueQuery, QueueResult } from "../types";
 
 type DataAnonQueueScreenProps = {
+  query: QueueQuery;
   emptyTitle: string;
   emptyDescription: string;
-  result: QueueResult;
+  result?: QueueResult;
 };
 
-export function DataAnonQueueScreen({
+function DataAnonResult({
+  result,
   emptyTitle,
   emptyDescription,
-  result,
-}: DataAnonQueueScreenProps) {
+}: {
+  result: QueueResult;
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
   const from = result.rows.length === 0 ? 0 : 1;
   const to = result.rows.length;
 
   return (
-    <div className="space-y-4">
+    <>
       {result.error ? (
         <p className="rounded-2xl bg-[#fdecec] px-4 py-2.5 text-sm text-navy">
           {result.error}
@@ -32,6 +40,35 @@ export function DataAnonQueueScreen({
           Showing {from} - {to} of {result.total} records
         </p>
       ) : null}
+    </>
+  );
+}
+
+export function DataAnonQueueScreen({
+  query,
+  emptyTitle,
+  emptyDescription,
+  result,
+}: DataAnonQueueScreenProps) {
+  return (
+    <div className="space-y-4">
+      {result ? (
+        <DataAnonResult
+          result={result}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+        />
+      ) : (
+        <QueueResultLoader endpoint="data-anon-queue" query={query}>
+          {(loaded) => (
+            <DataAnonResult
+              result={loaded}
+              emptyTitle={emptyTitle}
+              emptyDescription={emptyDescription}
+            />
+          )}
+        </QueueResultLoader>
+      )}
     </div>
   );
 }

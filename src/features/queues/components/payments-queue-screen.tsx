@@ -1,7 +1,13 @@
+"use client";
+
 import { routes } from "@/constants/routes";
 
 import { PaymentsFilterBar } from "./payments-filter-bar";
 import { PaymentsQueueTable } from "./payments-queue-table";
+import {
+  QueueResultLoader,
+  type QueueLoaderEndpoint,
+} from "./queue-result-loader";
 import type { QueueQuery, QueueResult } from "../types";
 
 type PaymentsQueueScreenProps = {
@@ -10,27 +16,24 @@ type PaymentsQueueScreenProps = {
   emptyTitle: string;
   emptyDescription: string;
   action?: string;
-  result: QueueResult;
+  endpoint?: QueueLoaderEndpoint;
+  result?: QueueResult;
 };
 
-export function PaymentsQueueScreen({
-  query,
-  organizations = [],
+function PaymentsResult({
+  result,
   emptyTitle,
   emptyDescription,
-  action = routes.transactions,
-  result,
-}: PaymentsQueueScreenProps) {
+}: {
+  result: QueueResult;
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
   const from = result.rows.length === 0 ? 0 : 1;
   const to = result.rows.length;
 
   return (
-    <div className="space-y-4">
-      <PaymentsFilterBar
-        query={query}
-        organizations={organizations}
-        action={action}
-      />
+    <>
       {result.error ? (
         <p className="rounded-2xl bg-[#fdecec] px-4 py-2.5 text-sm text-navy">
           {result.error}
@@ -46,6 +49,43 @@ export function PaymentsQueueScreen({
           {from} - {to} of {result.total}
         </p>
       ) : null}
+    </>
+  );
+}
+
+export function PaymentsQueueScreen({
+  query,
+  organizations = [],
+  emptyTitle,
+  emptyDescription,
+  action = routes.transactions,
+  endpoint = "transaction-queue",
+  result,
+}: PaymentsQueueScreenProps) {
+  return (
+    <div className="space-y-4">
+      <PaymentsFilterBar
+        query={query}
+        organizations={organizations}
+        action={action}
+      />
+      {result ? (
+        <PaymentsResult
+          result={result}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+        />
+      ) : (
+        <QueueResultLoader endpoint={endpoint} query={query}>
+          {(loaded) => (
+            <PaymentsResult
+              result={loaded}
+              emptyTitle={emptyTitle}
+              emptyDescription={emptyDescription}
+            />
+          )}
+        </QueueResultLoader>
+      )}
     </div>
   );
 }

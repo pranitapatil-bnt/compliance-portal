@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
@@ -238,21 +239,23 @@ function parseTokenCookie(raw: string | undefined): {
   };
 }
 
-export async function getSessionRecord(): Promise<SessionRecord | null> {
-  const store = await cookies();
-  const record = readSessionRecord(store.get(SESSION_COOKIE_NAME)?.value);
-  if (!record) {
-    return null;
-  }
+export const getSessionRecord = cache(
+  async (): Promise<SessionRecord | null> => {
+    const store = await cookies();
+    const record = readSessionRecord(store.get(SESSION_COOKIE_NAME)?.value);
+    if (!record) {
+      return null;
+    }
 
-  const tokens = parseTokenCookie(store.get(TOKENS_COOKIE_NAME)?.value);
-  return tokens ? { ...record, ...tokens } : record;
-}
+    const tokens = parseTokenCookie(store.get(TOKENS_COOKIE_NAME)?.value);
+    return tokens ? { ...record, ...tokens } : record;
+  },
+);
 
-export async function getSession(): Promise<Session | null> {
+export const getSession = cache(async (): Promise<Session | null> => {
   const record = await getSessionRecord();
   return record ? toPublicSession(record) : null;
-}
+});
 
 export async function getOidcCookie(): Promise<OidcCookie | null> {
   const store = await cookies();

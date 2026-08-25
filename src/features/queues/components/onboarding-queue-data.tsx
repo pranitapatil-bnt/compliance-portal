@@ -6,6 +6,7 @@ import { complianceBffPost } from "@/lib/compliance/browser";
 import type { RegistrationQueueDto } from "@/lib/compliance/types";
 
 import { OnboardingQueueTable } from "./onboarding-queue-table";
+import { QueueTableSkeleton } from "./queue-table-skeleton";
 import { mapRegistrationQueue } from "../mappers";
 import { buildQueueSearch } from "../search-body";
 import type { QueueQuery, QueueResult } from "../types";
@@ -75,11 +76,7 @@ export function OnboardingQueueData({
   }
 
   if (!result) {
-    return (
-      <p className="rounded-2xl bg-white px-4 py-8 text-center text-sm text-navy-muted">
-        Calling Java portal via POST /api/compliance/{endpoint}
-      </p>
-    );
+    return <QueueTableSkeleton />;
   }
 
   return (

@@ -148,13 +148,21 @@ export function getHolisticSearch(query: QueueQuery = {}) {
   );
 }
 
+let orgCache: { names: string[]; at: number } | null = null;
+const ORG_TTL_MS = 5 * 60 * 1000;
+
 export async function getOrganizationNames(): Promise<string[]> {
+  if (orgCache && Date.now() - orgCache.at < ORG_TTL_MS) {
+    return orgCache.names;
+  }
   try {
-    return readOrgLabels(await complianceApi.organizations());
+    const names = readOrgLabels(await complianceApi.organizations());
+    orgCache = { names, at: Date.now() };
+    return names;
   } catch (error) {
     logger.warn(
       `GET /organizations failed: ${error instanceof Error ? error.message : "unknown error"}`,
     );
-    return [];
+    return orgCache?.names ?? [];
   }
 }

@@ -1,0 +1,82 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+
+import { complianceBffPost } from "@/lib/compliance/browser";
+
+import { QueueTableSkeleton } from "./queue-table-skeleton";
+import {
+  mapDataAnonQueue,
+  mapRegistrationQueue,
+  mapTransactionQueue,
+  mapTxnApiQueue,
+} from "../mappers";
+import { buildQueueSearch } from "../search-body";
+import type { QueueQuery, QueueResult } from "../types";
+
+const mappers = {
+  "data-anon-queue": mapDataAnonQueue,
+  "reg-queue": mapRegistrationQueue,
+  "reg-report-criteria": mapRegistrationQueue,
+  "transaction-queue": mapTransactionQueue,
+  "transaction-report": mapTransactionQueue,
+  "txn-api-queue": mapTxnApiQueue,
+  "txn-api-report": mapTxnApiQueue,
+} as const;
+
+export type QueueLoaderEndpoint = keyof typeof mappers;
+
+type QueueResultLoaderProps = {
+  endpoint: QueueLoaderEndpoint;
+  query: QueueQuery;
+  children: (result: QueueResult) => ReactNode;
+};
+
+export function QueueResultLoader({
+  endpoint,
+  query,
+  children,
+}: QueueResultLoaderProps) {
+  const [result, setResult] = useState<QueueResult | null>(null);
+  const queryKey = JSON.stringify(query);
+
+  useEffect(() => {
+    let cancelled = false;
+    setResult(null);
+    const map = mappers[endpoint];
+    const parsedQuery = JSON.parse(queryKey) as QueueQuery;
+
+    void (async () => {
+      try {
+        const payload = await complianceBffPost<unknown>(
+          endpoint,
+          buildQueueSearch(parsedQuery),
+        );
+        if (!cancelled) {
+          setResult(map(payload));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setResult({
+            rows: [],
+            total: 0,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Could not load this queue from the Java portal.",
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [endpoint, queryKey]);
+
+  if (!result) {
+    return <QueueTableSkeleton />;
+  }
+
+  return children(result);
+}
