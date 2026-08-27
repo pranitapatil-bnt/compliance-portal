@@ -5,6 +5,9 @@ export type CheckBadge = {
 };
 
 export type CheckTable = {
+  status?: string;
+  fields?: DetailField[];
+  cards?: DetailField[];
   headers: string[];
   rows: string[][];
 };
@@ -54,6 +57,11 @@ export type RegistrationDetails = {
   organization: string;
   sourceOfFunds: string;
   primaryContact: string;
+  phone: string;
+  mobile: string;
+  address: string;
+  nationality: string;
+  ipAddress: string;
   complianceLog: string;
   lastUpdatedBy: string;
   lastUpdatedOn: string;
@@ -91,7 +99,12 @@ export type RegistrationDetails = {
   error?: string;
 };
 
-const emptyTable = (): CheckTable => ({ headers: [], rows: [] });
+const emptyTable = (headers: string[] = []): CheckTable => ({
+  status: "",
+  fields: headers.map((label) => ({ label, value: "—" })),
+  headers,
+  rows: [],
+});
 
 export const emptyDetails: RegistrationDetails = {
   contactId: null,
@@ -117,6 +130,11 @@ export const emptyDetails: RegistrationDetails = {
   organization: "—",
   sourceOfFunds: "—",
   primaryContact: "—",
+  phone: "—",
+  mobile: "—",
+  address: "—",
+  nationality: "—",
+  ipAddress: "—",
   complianceLog: "",
   lastUpdatedBy: "",
   lastUpdatedOn: "",
@@ -133,13 +151,53 @@ export const emptyDetails: RegistrationDetails = {
   otherPeople: [],
   activityLog: [],
   checks: {
-    blacklist: emptyTable(),
-    eid: emptyTable(),
-    sanction: emptyTable(),
-    fraudPredict: emptyTable(),
-    custom: emptyTable(),
-    onfido: emptyTable(),
-    documents: emptyTable(),
+    blacklist: emptyTable([
+      "Name match",
+      "Phone match",
+      "Email match",
+      "Domain match",
+      "IP match",
+      "Overall status",
+    ]),
+    eid: emptyTable([
+      "Check date/time",
+      "Performed",
+      "Verification result",
+      "Reference Id",
+      "Date of birth",
+      "Overall Status",
+    ]),
+    sanction: emptyTable([
+      "Updated on",
+      "Updated by",
+      "Sanction ID",
+      "OFAC List",
+      "World check",
+      "Status",
+    ]),
+    fraudPredict: emptyTable([
+      "Created on",
+      "Updated by",
+      "Fraugster Id",
+      "Score",
+      "Status",
+    ]),
+    custom: emptyTable(["Check date/time", "Rules", "Status"]),
+    onfido: emptyTable([
+      "Updated on",
+      "Updated by",
+      "Onfido ID",
+      "Reviewed",
+      "Status",
+    ]),
+    documents: emptyTable([
+      "Created on",
+      "Created by",
+      "Document name",
+      "Type",
+      "Note",
+      "Status",
+    ]),
   },
   badges: {
     blacklist: {},

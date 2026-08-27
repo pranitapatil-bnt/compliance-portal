@@ -119,47 +119,175 @@ function lockOwner(html: string): {
 }
 
 function cellText(raw: string): string {
-  if (/hidden/i.test(raw)) {
+  if (/\bhidden\b/i.test(raw.split(">")[0] ?? "")) {
     return "";
   }
   if (/type=["']checkbox["']/i.test(raw)) {
     return /checked/i.test(raw) ? "Yes" : "No";
   }
+  const extra = stripTags(
+    raw
+      .replace(/<i[^>]*>\s*(check|clear)\s*<\/i>/gi, " ")
+      .replace(/<br\s*\/?>/gi, " "),
+  );
   if (/yes-cell/i.test(raw) || /material-icons[^>]*>\s*check/i.test(raw)) {
-    return "Pass";
+    return extra && extra.toLowerCase() !== "check" ? extra : "Pass";
   }
   if (/no-cell/i.test(raw) || /material-icons[^>]*>\s*clear/i.test(raw)) {
-    return "Fail";
+    return extra && extra.toLowerCase() !== "clear" ? extra : "Fail";
   }
-  return stripTags(raw);
+  return extra;
 }
 
 function tableByBody(html: string, tbodyId: string): CheckTable {
   const escaped = tbodyId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const tableMatch = new RegExp(
-    `<table[\\s\\S]*?<tbody[^>]*id=["']${escaped}["'][^>]*>([\\s\\S]*?)</tbody>`,
+  const tbodyRe = new RegExp(
+    `<tbody[^>]*id=["']${escaped}["'][^>]*>`,
     "i",
-  ).exec(html);
-  const bodyMatch = new RegExp(
-    `<tbody[^>]*id=["']${escaped}["'][^>]*>([\\s\\S]*?)</tbody>`,
-    "i",
-  ).exec(html);
-  const body = bodyMatch?.[1] ?? "";
-  const tableHtml = tableMatch?.[0] ?? "";
-  const headerBlock = /<thead[^>]*>([\s\S]*?)<\/thead>/i.exec(tableHtml)?.[1] ?? "";
+  );
+  const start = html.search(tbodyRe);
+  const empty: CheckTable = { status: "", fields: [], headers: [], rows: [] };
+  if (start < 0) {
+    return empty;
+  }
+  const tableStart = html.lastIndexOf("<table", start);
+  const close = html.slice(start).search(/<\/tbody>/i);
+  if (close < 0) {
+    return empty;
+  }
+  const bodyOpen = html.slice(start).match(tbodyRe)?.[0] ?? "";
+  const body = html.slice(start + bodyOpen.length, start + Math.max(close, 0));
+  const tableHtml =
+    tableStart >= 0
+      ? html.slice(tableStart, start + Math.max(close, 0) + 8)
+      : body;
+  const headerBlock =
+    /<thead[^>]*>([\s\S]*?)<\/thead>/i.exec(tableHtml)?.[1] ?? "";
   const headers = [...headerBlock.matchAll(/<th[^>]*>([\s\S]*?)<\/th>/gi)]
     .map((item) => stripTags(item[1] ?? ""))
     .filter(Boolean);
 
-  const rows = [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)]
+  const rowsFromTr = [...body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)]
     .map((row) =>
       [...(row[1] ?? "").matchAll(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi)]
         .filter((cell) => !/\bhidden\b/i.test(cell[1] ?? ""))
         .map((cell) => cellText(`${cell[1] ?? ""} ${cell[2] ?? ""}`)),
     )
     .filter((row) => row.some((cell) => cell.length > 0));
+  const rows =
+    rowsFromTr.length > 0
+      ? rowsFromTr
+      : [
+          [...body.matchAll(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi)]
+            .filter((cell) => !/\bhidden\b/i.test(cell[1] ?? ""))
+            .map((cell) => cellText(`${cell[1] ?? ""} ${cell[2] ?? ""}`)),
+        ].filter((row) => row.some((cell) => cell.length > 0));
 
-  return { headers, rows };
+  return { status: "", fields: [], headers, rows };
+}
+
+function matchLabel(label: string): string {
+  const mapped: Record<string, string> = {
+    Name: "Name match",
+    Phone: "Phone match",
+    Email: "Email match",
+    Domain: "Domain match",
+    IP: "IP match",
+  };
+  return mapped[label] ?? label;
+}
+
+function statusResult(value: string): string {
+  const text = value.trim();
+  if (!text || text === "—") {
+    return "—";
+  }
+  if (/not required/i.test(text)) {
+    return "Not required";
+  }
+  if (/^pass$/i.test(text) || /match not found/i.test(text)) {
+    return "Pass";
+  }
+  if (/^fail$/i.test(text) || (/match found/i.test(text) && !/match not found/i.test(text))) {
+    return "Fail";
+  }
+  return text;
+}
+
+function matchResult(value: string): string {
+  const text = value.trim();
+  if (!text || text === "—") {
+    return "—";
+  }
+  if (/not required/i.test(text)) {
+    return "Not required";
+  }
+  if (/match not found/i.test(text)) {
+    return text;
+  }
+  if (/match found/i.test(text)) {
+    return text;
+  }
+  if (/^pass$/i.test(text) || text.toLowerCase() === "false") {
+    return "Match not found";
+  }
+  if (/^fail$/i.test(text) || text.toLowerCase() === "true") {
+    return "Match found";
+  }
+  return `Match found (${text})`;
+}
+
+function toCheck(
+  html: string,
+  tbodyId: string,
+  defaultHeaders: string[],
+  statusKeys: string[],
+  fallbacks: Record<string, string> = {},
+  asMatch = false,
+): CheckTable {
+  const table = tableByBody(html, tbodyId);
+  const rawHeaders = table.headers.length > 0 ? table.headers : defaultHeaders;
+  const headers = asMatch
+    ? rawHeaders.map((label) => matchLabel(label))
+    : rawHeaders;
+  const first = table.rows[0] ?? [];
+  const fields = headers.map((label, index) => {
+    const fromRow = first[index]?.trim() ?? "";
+    const fromFallback =
+      fallbacks[label]?.trim() ??
+      fallbacks[rawHeaders[index] ?? ""]?.trim() ??
+      "";
+    const raw = fromRow && fromRow !== "—" ? fromRow : fromFallback;
+    const isStatus = /status/i.test(label);
+    return {
+      label,
+      value: asMatch
+        ? isStatus
+          ? statusResult(dash(raw))
+          : matchResult(dash(raw))
+        : dash(raw),
+    };
+  });
+  const statusField = fields.find((field) => /status/i.test(field.label));
+  const status = firstText(
+    attrValue(html, statusKeys),
+    ...statusKeys.map((key) => textById(html, key)),
+    statusField?.value === "—" ? "" : (statusField?.value ?? ""),
+  );
+  return {
+    status: asMatch ? statusResult(status) : status,
+    fields,
+    headers,
+    rows: asMatch
+      ? table.rows.map((row) =>
+          row.map((cell, index) =>
+            /status/i.test(headers[index] ?? "")
+              ? statusResult(cell)
+              : matchResult(cell),
+          ),
+        )
+      : table.rows,
+  };
 }
 
 function parseOtherPeople(html: string): OtherPerson[] {
@@ -232,7 +360,7 @@ function parseFurtherDetails(html: string): DetailField[] {
     ["Referral text", "account_FurtherClient_refferalText"],
     ["Affiliate name", "account_FurtherClient_affiliateName"],
     ["Source", "account_source"],
-    ["Work phone", "account_FurtherClient_affiliateName"],
+    ["Work phone", ""],
   ];
   const seen = new Set<string>();
   const fields: DetailField[] = [];
@@ -240,10 +368,9 @@ function parseFurtherDetails(html: string): DetailField[] {
     if (seen.has(label)) {
       continue;
     }
-    const value = dash(textById(html, id) || textAfterLabel(html, label));
-    if (value === "—") {
-      continue;
-    }
+    const value = dash(
+      (id ? textById(html, id) : "") || textAfterLabel(html, label),
+    );
     seen.add(label);
     fields.push({ label, value });
   }
@@ -307,7 +434,55 @@ export function parseRegistrationDetailsHtml(
     textAfterLabel(html, "Legal Entity"),
     textById(html, "account_legalEntity"),
   );
-  const documents = tableByBody(html, "attachDoc");
+  const name = firstText(
+    textById(html, "contact_name"),
+    textById(html, "account-name"),
+    textAfterLabel(html, "Name"),
+  );
+  const dateOfBirth = firstText(
+    textById(html, "contact_dateofbirth"),
+    textAfterLabel(html, "Date of birth"),
+  );
+  const phone = firstText(
+    textById(html, "contact_FurtherClient_phone"),
+    textAfterLabel(html, "Phone"),
+  );
+  const mobile = firstText(
+    textById(html, "contact_FurtherClient_mobile"),
+    textAfterLabel(html, "Mobile"),
+  );
+  const address = firstText(
+    textById(html, "contact_FurtherClient_Address"),
+    textAfterLabel(html, "Address"),
+  );
+  const blacklistCheck = toCheck(
+    html,
+    "regDetails_blacklist",
+    [
+      "Name match",
+      "Phone match",
+      "Email match",
+      "Domain match",
+      "IP match",
+      "Overall status",
+    ],
+    ["blacklistStatus", "blacklist_status"],
+    {},
+    true,
+  );
+  const documents = toCheck(
+    html,
+    "attachDoc",
+    [
+      "Created on",
+      "Created by",
+      "Document name",
+      "Type",
+      "Note",
+      "Status",
+    ],
+    ["docConunt"],
+  );
   const otherPeople = parseOtherPeople(html);
   const docCount =
     textById(html, "docConunt") ||
@@ -345,11 +520,7 @@ export function parseRegistrationDetailsHtml(
       textById(html, "account_tradeAccountNum").replace(/^Client\s*#\s*/i, ""),
     ),
     status,
-    name: dash(
-      textById(html, "contact_name") ||
-        textById(html, "account-name") ||
-        textAfterLabel(html, "Name"),
-    ),
+    name: dash(name),
     clientType: dash(custType),
     occupation: dash(
       textById(html, "contact_occupation") ||
@@ -357,10 +528,7 @@ export function parseRegistrationDetailsHtml(
     ),
     email: dash(email),
     legalEntity: dash(legalEntity),
-    dateOfBirth: dash(
-      textById(html, "contact_dateofbirth") ||
-        textAfterLabel(html, "Date of birth"),
-    ),
+    dateOfBirth: dash(dateOfBirth),
     currencyPair: dash(
       textById(html, "account_currencyPair") ||
         textAfterLabel(html, "Currency Pair"),
@@ -390,6 +558,17 @@ export function parseRegistrationDetailsHtml(
       textById(html, "is_primaryContact") ||
         textAfterLabel(html, "Is primary contact"),
     ),
+    phone: dash(phone),
+    mobile: dash(mobile),
+    address: dash(address),
+    nationality: dash(
+      textById(html, "contact_FurtherClient_nationality") ||
+        textAfterLabel(html, "Country of nationality"),
+    ),
+    ipAddress: dash(
+      textById(html, "contact_FurtherClient_ipAddress") ||
+        textAfterLabel(html, "IP Address"),
+    ),
     complianceLog: textById(html, "regDetails_alert_compliance_log"),
     lastUpdatedBy: lastUpdated?.[1] ? stripTags(lastUpdated[1]) : "",
     lastUpdatedOn: lastUpdated?.[2]?.trim() ?? "",
@@ -409,12 +588,52 @@ export function parseRegistrationDetailsHtml(
     otherPeople,
     activityLog: parseActivityLog(html),
     checks: {
-      blacklist: tableByBody(html, "regDetails_blacklist"),
-      eid: tableByBody(html, "regDetails_eid"),
-      sanction: tableByBody(html, "regDetails_sanction"),
-      fraudPredict: tableByBody(html, "regDetails_fraugster"),
-      custom: tableByBody(html, "regDetails_customchecks"),
-      onfido: tableByBody(html, "regDetails_onfido"),
+      blacklist: blacklistCheck,
+      eid: toCheck(
+        html,
+        "regDetails_eid",
+        [
+          "Check date/time",
+          "Performed",
+          "Verification result",
+          "Reference Id",
+          "Date of birth",
+          "Overall Status",
+        ],
+        ["kycStatus", "eid_status"],
+        { "Date of birth": dateOfBirth },
+      ),
+      sanction: toCheck(
+        html,
+        "regDetails_sanction",
+        [
+          "Updated on",
+          "Updated by",
+          "Sanction ID",
+          "OFAC List",
+          "World check",
+          "Status",
+        ],
+        ["sanctionStatus", "sanction_status"],
+      ),
+      fraudPredict: toCheck(
+        html,
+        "regDetails_fraugster",
+        ["Created on", "Updated by", "Fraugster Id", "Score", "Status"],
+        ["fraugsterStatus", "fraugster_status"],
+      ),
+      custom: toCheck(
+        html,
+        "regDetails_customchecks",
+        ["Check date/time", "Rules", "Status"],
+        [],
+      ),
+      onfido: toCheck(
+        html,
+        "regDetails_onfido",
+        ["Updated on", "Updated by", "Onfido ID", "Reviewed", "Status"],
+        ["onfido_status"],
+      ),
       documents,
     },
     badges: {

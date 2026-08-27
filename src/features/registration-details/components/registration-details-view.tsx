@@ -13,9 +13,11 @@ import {
   readLockId,
   updateRegistrationProfile,
 } from "../portal-actions";
+import { mapCheckTabs, mapFurtherDetails } from "../map-check-tabs";
 import type {
   CheckBadge,
   CheckTable,
+  DetailField,
   RegistrationDetails,
 } from "../types";
 
@@ -83,18 +85,79 @@ function Badges({ badge }: { badge?: CheckBadge }) {
   );
 }
 
+function StatusPill({ value }: { value: string }) {
+  const text = value.trim() || "Not started";
+  const upper = text.toUpperCase();
+  const matchFound = /MATCH FOUND/.test(upper) && !/MATCH NOT FOUND/.test(upper);
+  const matchClear = /MATCH NOT FOUND|NOT BLACKLISTED/.test(upper);
+  const pending =
+    !matchFound &&
+    !matchClear &&
+    /NOT REQUIRED|NOT STARTED|PENDING|N\/A|NA|----|REVIEW|EVALUATION|INACTIVE|UNDER/.test(
+      upper,
+    );
+  const pass =
+    matchClear ||
+    (!pending &&
+      !matchFound &&
+      /PASS|SUCCESS|YES|TRUE|ACTIVE|VERIFIED/.test(upper));
+  const fail =
+    matchFound || (!pending && /FAIL|REJECT/.test(upper));
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase",
+        pass && "bg-[#e8f8ee] text-[#1f9d55]",
+        fail && "bg-[#fdecec] text-[#c0392b]",
+        pending && "bg-[#fff4e0] text-[#c9842a]",
+        !pass && !fail && !pending && "bg-[#eef4fb] text-[#3d7ec4]",
+      )}
+    >
+      {text}
+    </span>
+  );
+}
+
+function MatchCards({ cards }: { cards: DetailField[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      {cards.map((card) => {
+        const upper = card.value.toUpperCase();
+        const found =
+          (/MATCH FOUND/.test(upper) && !/MATCH NOT FOUND/.test(upper)) ||
+          /FAIL/.test(upper);
+        const clear = /MATCH NOT FOUND|PASS|NOT BLACKLISTED/.test(upper);
+        return (
+          <div
+            key={card.label}
+            className={cn(
+              "rounded-md border px-2 py-2",
+              found && "border-[#f3c0c0] bg-[#fdecec]",
+              clear && "border-[#bfe8cf] bg-[#e8f8ee]",
+              !found && !clear && "border-[#dce3ea] bg-[#f7fbfe]",
+            )}
+          >
+            <p className="mb-1 text-[10px] font-semibold tracking-wide text-[#6b7785] uppercase">
+              {card.label}
+            </p>
+            <StatusPill value={card.value} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function CheckGrid({ table }: { table: CheckTable }) {
   if (table.rows.length === 0) {
-    return (
-      <p className="px-3 pb-3 text-sm text-[#6b7785]">No records for this check.</p>
-    );
+    return null;
   }
   const headers =
     table.headers.length > 0
       ? table.headers
       : table.rows[0]?.map((_, index) => `Col ${index + 1}`) ?? [];
   return (
-    <div className="overflow-x-auto px-3 pb-3">
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[480px] text-left text-xs">
         <thead>
           <tr className="border-b border-[#e8eef3] text-[10px] font-semibold tracking-wide text-[#6b7785] uppercase">
@@ -107,14 +170,17 @@ function CheckGrid({ table }: { table: CheckTable }) {
         </thead>
         <tbody>
           {table.rows.map((row, index) => (
-            <tr key={`${row.join("-")}-${index}`} className="border-b border-[#f3f6f9] last:border-0">
+            <tr
+              key={`${row.join("-")}-${index}`}
+              className="border-b border-[#f3f6f9] last:border-0"
+            >
               {row.map((cell, cellIndex) => (
                 <td
                   key={`${cellIndex}-${cell}`}
                   className={cn(
                     "px-2 py-1.5 text-[#2c3a4a]",
-                    cell === "Pass" && "font-semibold text-[#22a05a]",
-                    cell === "Fail" && "font-semibold text-[#e25555]",
+                    /pass|success/i.test(cell) && "font-semibold text-[#22a05a]",
+                    /fail/i.test(cell) && "font-semibold text-[#c0392b]",
                   )}
                 >
                   {cell || "—"}
@@ -128,10 +194,51 @@ function CheckGrid({ table }: { table: CheckTable }) {
   );
 }
 
+function CheckPanel({ table }: { table: CheckTable }) {
+  const fields =
+    table.fields && table.fields.length > 0
+      ? table.fields
+      : table.headers.map((label, index) => ({
+          label,
+          value: table.rows[0]?.[index] ?? "—",
+        }));
+  const cards = table.cards ?? [];
+  const manyRows = table.rows.length > 1;
+  const listCheck = table.headers.some((header) =>
+    /document|rules/i.test(header),
+  );
+
+  return (
+    <div className="space-y-3 bg-white px-4 py-3">
+      {fields.length > 0 ? (
+        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+          {fields.map((field, index) => (
+            <Field
+              key={`${field.label}-${index}`}
+              label={field.label}
+              value={field.value}
+            />
+          ))}
+        </dl>
+      ) : null}
+      {cards.length > 0 ? <MatchCards cards={cards} /> : null}
+      {manyRows || (listCheck && table.rows.length > 0) ? (
+        <CheckGrid table={table} />
+      ) : null}
+      {fields.length === 0 &&
+      cards.length === 0 &&
+      table.rows.length === 0 ? (
+        <p className="text-sm text-[#6b7785]">No records for this check.</p>
+      ) : null}
+    </div>
+  );
+}
+
 function Accordion({
   id,
   title,
   badge,
+  status,
   open,
   onToggle,
   children,
@@ -139,24 +246,27 @@ function Accordion({
   id: string;
   title: string;
   badge?: CheckBadge;
+  status?: string;
   open: boolean;
   onToggle: () => void;
   children?: ReactNode;
 }) {
   return (
-    <div className="border-b border-[#e8eef3] last:border-b-0">
+    <div className="border-b border-[#d7e4f0] last:border-b-0">
       <button
         type="button"
         id={id}
+        aria-expanded={open}
         onClick={onToggle}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[12px] font-semibold tracking-[0.06em] text-[#2c3a4a] uppercase"
+        className="flex w-full items-center gap-2 bg-[#e8f2fb] px-3 py-2.5 text-left text-[12px] font-semibold tracking-[0.06em] text-[#1d4f7a] uppercase"
       >
-        <span className="text-[10px] text-[#8b95a1]" aria-hidden="true">
-          {open ? "▾" : "▸"}
-        </span>
         <span className="flex-1">
           {title}
           <Badges badge={badge} />
+        </span>
+        {status ? <StatusPill value={status} /> : null}
+        <span className="text-sm text-[#3d7ec4]" aria-hidden="true">
+          {open ? "▴" : "▾"}
         </span>
       </button>
       {open ? children : null}
@@ -236,57 +346,19 @@ export function RegistrationDetailsView({
   const backLabel =
     details.source === "REPORT" ? "Onboarding report" : "Onboarding queue";
 
-  const checkItems = [
-    {
-      id: "check-blacklist",
-      title: "Blacklist",
-      badge: details.badges.blacklist,
-      table: details.checks.blacklist,
-    },
-    {
-      id: "check-eid",
-      title: "EID",
-      badge: details.badges.eid,
-      table: details.checks.eid,
-    },
-    {
-      id: "check-sanctions",
-      title: "Sanctions",
-      badge: details.badges.sanction,
-      table: details.checks.sanction,
-    },
-    {
-      id: "check-fraud",
-      title: "FraudPredict",
-      badge: details.badges.fraudPredict,
-      table: details.checks.fraudPredict,
-    },
-    {
-      id: "check-custom",
-      title: "Custom checks",
-      badge: details.badges.custom,
-      table: details.checks.custom,
-    },
-    {
-      id: "check-onfido",
-      title: "Onfido",
-      badge: details.badges.onfido,
-      table: details.checks.onfido,
-    },
-    {
-      id: "check-docs",
-      title: "Attached documents",
-      badge: details.badges.documents,
-      table: details.checks.documents,
-    },
-  ];
+  const checkItems = mapCheckTabs(details);
 
-  function toggle(id: string) {
+  const checkIds = checkItems.map((item) => item.id);
+  const otherIds = ["other-people", "further-details", "activity-log"];
+
+  function toggleInGroup(id: string, groupIds: string[]) {
     setOpenIds((current) => {
+      const wasOpen = current.has(id);
       const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
+      for (const groupId of groupIds) {
+        next.delete(groupId);
+      }
+      if (!wasOpen) {
         next.add(id);
       }
       return next;
@@ -469,6 +541,10 @@ export function RegistrationDetailsView({
             <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-3">
               <div className="space-y-3">
                 <Field label="Name" value={details.name} accent />
+                <Field
+                  label="Contact Id"
+                  value={details.contactId ? String(details.contactId) : "—"}
+                />
                 <Field label="Client type" value={details.clientType} />
                 <Field label="Occupation" value={details.occupation} />
                 <Field label="Email address" value={details.email} />
@@ -476,6 +552,8 @@ export function RegistrationDetailsView({
               </div>
               <div className="space-y-3">
                 <Field label="Date of birth" value={details.dateOfBirth} />
+                <Field label="Phone" value={details.phone} />
+                <Field label="Mobile" value={details.mobile} />
                 <Field label="Currency Pair" value={details.currencyPair} />
                 <Field
                   label="Estimated transaction value"
@@ -492,6 +570,8 @@ export function RegistrationDetailsView({
                   label="Country of residence"
                   value={details.countryOfResidence}
                 />
+                <Field label="Nationality" value={details.nationality} />
+                <Field label="Client number" value={details.clientNumber} />
                 <Field label="Organization" value={details.organization} />
                 <Field label="Source of funds" value={details.sourceOfFunds} />
                 <Field
@@ -542,16 +622,37 @@ export function RegistrationDetailsView({
                 </button>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2 border-b border-[#e8eef3] bg-[#f7fbfe] px-3 py-3 sm:grid-cols-4 lg:grid-cols-7">
+              {checkItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => toggleInGroup(item.id, checkIds)}
+                    className={cn(
+                      "rounded-md border bg-white px-2 py-2 text-left",
+                      openIds.has(item.id)
+                        ? "border-[#3d7ec4]"
+                        : "border-[#dce3ea]",
+                    )}
+                  >
+                    <p className="mb-1 truncate text-[10px] font-semibold tracking-wide text-[#6b7785] uppercase">
+                      {item.title}
+                    </p>
+                    <StatusPill value={item.status} />
+                  </button>
+              ))}
+            </div>
             {checkItems.map((item) => (
               <Accordion
                 key={item.id}
                 id={item.id}
                 title={item.title}
                 badge={item.badge}
+                status={item.status}
                 open={openIds.has(item.id)}
-                onToggle={() => toggle(item.id)}
+                onToggle={() => toggleInGroup(item.id, checkIds)}
               >
-                <CheckGrid table={item.table} />
+                <CheckPanel table={item.table} />
               </Accordion>
             ))}
           </section>
@@ -595,7 +696,7 @@ export function RegistrationDetailsView({
               title="Other people on this account"
               badge={details.badges.otherPeople}
               open={openIds.has("other-people")}
-              onToggle={() => toggle("other-people")}
+              onToggle={() => toggleInGroup("other-people", otherIds)}
             >
               {details.otherPeople.length === 0 ? (
                 <p className="px-3 pb-3 text-sm text-[#6b7785]">
@@ -613,7 +714,9 @@ export function RegistrationDetailsView({
                           "rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase",
                           person.status.toUpperCase() === "ACTIVE"
                             ? "bg-[#e8f8ee] text-[#1f9d55]"
-                            : "bg-[#fdecec] text-[#c0392b]",
+                            : person.status.toUpperCase() === "REJECTED"
+                              ? "bg-[#fdecec] text-[#c0392b]"
+                              : "bg-[#fff4e0] text-[#c9842a]",
                         )}
                       >
                         {person.status}
@@ -639,55 +742,51 @@ export function RegistrationDetailsView({
               id="further-details"
               title="Further client details"
               open={openIds.has("further-details")}
-              onToggle={() => toggle("further-details")}
+              onToggle={() => toggleInGroup("further-details", otherIds)}
             >
-              {details.furtherDetails.length === 0 ? (
-                <p className="px-3 pb-3 text-sm text-[#6b7785]">
-                  No extra client details.
-                </p>
-              ) : (
-                <dl className="grid gap-3 px-3 pb-3 sm:grid-cols-2">
-                  {details.furtherDetails.map((field) => (
-                    <Field
-                      key={field.label}
-                      label={field.label}
-                      value={field.value}
-                    />
-                  ))}
-                </dl>
-              )}
+              <dl className="grid gap-3 px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
+                {mapFurtherDetails(details).map((field, index) => (
+                  <Field
+                    key={`${field.label}-${index}`}
+                    label={field.label}
+                    value={field.value}
+                  />
+                ))}
+              </dl>
             </Accordion>
             <Accordion
               id="activity-log"
               title="Activity log"
               open={openIds.has("activity-log")}
-              onToggle={() => toggle("activity-log")}
+              onToggle={() => toggleInGroup("activity-log", otherIds)}
             >
               {details.activityLog.length === 0 ? (
                 <p className="px-3 pb-3 text-sm text-[#6b7785]">
                   No activity recorded.
                 </p>
               ) : (
-                <CheckGrid
-                  table={{
-                    headers: [
-                      "Activity date/time",
-                      "Trade Contract Number",
-                      "User",
-                      "Activity",
-                      "Activity type",
-                      "Comment",
-                    ],
-                    rows: details.activityLog.map((row) => [
-                      row.date,
-                      row.contract,
-                      row.user,
-                      row.activity,
-                      row.activityType,
-                      row.comment,
-                    ]),
-                  }}
-                />
+                <div className="px-3 pb-3">
+                  <CheckGrid
+                    table={{
+                      headers: [
+                        "Activity date/time",
+                        "Trade Contract Number",
+                        "User",
+                        "Activity",
+                        "Activity type",
+                        "Comment",
+                      ],
+                      rows: details.activityLog.map((row) => [
+                        row.date,
+                        row.contract,
+                        row.user,
+                        row.activity,
+                        row.activityType,
+                        row.comment,
+                      ]),
+                    }}
+                  />
+                </div>
               )}
             </Accordion>
           </section>
@@ -901,7 +1000,14 @@ export function RegistrationDetailsView({
               <button
                 type="button"
                 onClick={() =>
-                  setOpenIds((current) => new Set(current).add("activity-log"))
+                  setOpenIds((current) => {
+                    const next = new Set(current);
+                    for (const id of otherIds) {
+                      next.delete(id);
+                    }
+                    next.add("activity-log");
+                    return next;
+                  })
                 }
                 className="text-[#3d7ec4] hover:underline"
               >
