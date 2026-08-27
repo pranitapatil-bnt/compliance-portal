@@ -4,10 +4,6 @@ import { PageHeader } from "@/components/shared/page-header";
 import { routes } from "@/constants/routes";
 import { OnboardingQueueScreen } from "@/features/queues/components/onboarding-queue-screen";
 import { readQueueQuery } from "@/features/queues/search-body";
-import {
-  getHolisticSearch,
-  getOrganizationNames,
-} from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
 
 export const metadata: Metadata = {
@@ -22,12 +18,6 @@ export default async function HolisticReportPage({
   const params = await searchParams;
   const query = readQueueQuery(params, { fromReport: true });
   const hasSearch = Boolean(query.keyword);
-  const [result, organizations] = await Promise.all([
-    hasSearch
-      ? getHolisticSearch(query)
-      : Promise.resolve({ rows: [], total: 0 }),
-    getOrganizationNames(),
-  ]);
 
   return (
     <>
@@ -36,9 +26,9 @@ export default async function HolisticReportPage({
         description="Search a client and open their 360° profile, payments, and checks."
       />
       <OnboardingQueueScreen
-        result={result}
         query={query}
-        organizations={organizations}
+        skip={!hasSearch}
+        endpoint="reg-report-criteria"
         action={routes.reportsHolistic}
         emptyTitle={hasSearch ? "No matching clients" : "No client selected"}
         emptyDescription={

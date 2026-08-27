@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { paymentColumns } from "@/constants/screens";
 import { QueuePageBody } from "@/features/queues";
-import { getPaymentOutQueue } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
 
 export const metadata: Metadata = {
@@ -23,7 +22,7 @@ export default function PaymentOutQueuePage({
       />
       <QueuePageBody
         searchParams={searchParams}
-        load={getPaymentOutQueue}
+        endpoint="payment-out-queue"
         columns={paymentColumns}
         emptyTitle="No outward payments in queue"
         emptyDescription="HOLD / failed funds-out will appear here from /paymentOutQueue."

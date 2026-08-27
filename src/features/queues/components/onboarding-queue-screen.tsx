@@ -1,3 +1,5 @@
+"use client";
+
 import { routes } from "@/constants/routes";
 
 import { OnboardingFilterBar } from "./onboarding-filter-bar";
@@ -7,6 +9,7 @@ import {
 } from "./onboarding-queue-data";
 import { OnboardingQueueTable } from "./onboarding-queue-table";
 import type { QueueQuery, QueueResult } from "../types";
+import { useOrganizationNames } from "../use-organization-names";
 
 type OnboardingQueueScreenProps = {
   query: QueueQuery;
@@ -21,7 +24,7 @@ type OnboardingQueueScreenProps = {
 
 export function OnboardingQueueScreen({
   query,
-  organizations = [],
+  organizations,
   emptyTitle,
   emptyDescription,
   action = routes.reg,
@@ -29,11 +32,13 @@ export function OnboardingQueueScreen({
   skip = false,
   result,
 }: OnboardingQueueScreenProps) {
+  const loadedOrgs = useOrganizationNames();
+  const orgNames = organizations ?? loadedOrgs;
   return (
     <div className="space-y-4">
       <OnboardingFilterBar
         query={query}
-        organizations={organizations}
+        organizations={orgNames}
         action={action}
       />
       {result ? (

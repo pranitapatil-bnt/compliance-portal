@@ -48,7 +48,10 @@ export const env = {
 /** Java portal JSON API root. Cookie auth (JSESSIONID), not Bearer JWT. */
 export function readPortalApiBase(): string {
   const raw =
-    env.complianceApiBase ?? env.apiBaseUrl ?? DEFAULT_PORTAL_API_BASE;
+    env.complianceApiBase ??
+    readEnv("NEXT_PUBLIC_COMPLIANCE_API_BASE") ??
+    env.apiBaseUrl ??
+    DEFAULT_PORTAL_API_BASE;
 
   try {
     const url = new URL(raw);

@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { beneficiaryColumns } from "@/constants/screens";
 import { QueuePageBody } from "@/features/queues";
-import { getBeneficiaryReport } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
 
 export const metadata: Metadata = {
@@ -23,7 +22,7 @@ export default function BeneficiariesReportPage({
       />
       <QueuePageBody
         searchParams={searchParams}
-        load={getBeneficiaryReport}
+        endpoint="bene-report-apply"
         columns={beneficiaryColumns}
         emptyTitle="No beneficiaries"
         emptyDescription="Results will appear here from /beneReportApply."

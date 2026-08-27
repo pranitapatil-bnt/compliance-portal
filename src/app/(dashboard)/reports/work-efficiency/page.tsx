@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shared/page-header";
 import { workEfficiencyColumns } from "@/constants/screens";
 import { QueuePageBody } from "@/features/queues";
-import { getWorkEfficiencyReport } from "@/features/queues/services/queue-service";
 import type { QueueSearchParams } from "@/features/queues/types";
 
 export const metadata: Metadata = {
@@ -23,7 +22,7 @@ export default function WorkEfficiencyReportPage({
       />
       <QueuePageBody
         searchParams={searchParams}
-        load={getWorkEfficiencyReport}
+        endpoint="work-efficiency-report"
         columns={workEfficiencyColumns}
         emptyTitle="No efficiency data"
         emptyDescription="Metrics will appear here from /workEfficiencyReport."

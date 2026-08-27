@@ -9,6 +9,7 @@ import {
   type QueueLoaderEndpoint,
 } from "./queue-result-loader";
 import type { QueueQuery, QueueResult } from "../types";
+import { useOrganizationNames } from "../use-organization-names";
 
 type PaymentsQueueScreenProps = {
   query: QueueQuery;
@@ -55,18 +56,20 @@ function PaymentsResult({
 
 export function PaymentsQueueScreen({
   query,
-  organizations = [],
+  organizations,
   emptyTitle,
   emptyDescription,
   action = routes.transactions,
   endpoint = "transaction-queue",
   result,
 }: PaymentsQueueScreenProps) {
+  const loadedOrgs = useOrganizationNames();
+  const orgNames = organizations ?? loadedOrgs;
   return (
     <div className="space-y-4">
       <PaymentsFilterBar
         query={query}
-        organizations={organizations}
+        organizations={orgNames}
         action={action}
       />
       {result ? (

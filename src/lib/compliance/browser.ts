@@ -12,7 +12,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return data as T;
 }
 
-/** Browser fetch against this app's BFF. Do not call 172.31.2.23 from the client. */
+/**
+ * Browser talks to this app's BFF only.
+ * Next.js then calls http://172.31.2.23:8080/compliance-portal (no CORS).
+ */
 export async function complianceBff<T>(
   slug: string,
   init: RequestInit = {},

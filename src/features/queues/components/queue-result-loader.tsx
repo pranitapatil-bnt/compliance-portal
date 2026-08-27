@@ -6,22 +6,30 @@ import { complianceBffPost } from "@/lib/compliance/browser";
 
 import { QueueTableSkeleton } from "./queue-table-skeleton";
 import {
+  mapBeneficiaryQueue,
   mapDataAnonQueue,
+  mapPaymentInQueue,
+  mapPaymentOutQueue,
   mapRegistrationQueue,
   mapTransactionQueue,
   mapTxnApiQueue,
+  mapWorkEfficiency,
 } from "../mappers";
 import { buildQueueSearch } from "../search-body";
 import type { QueueQuery, QueueResult } from "../types";
 
 const mappers = {
+  "bene-report-apply": mapBeneficiaryQueue,
   "data-anon-queue": mapDataAnonQueue,
+  "pay-in-queue": mapPaymentInQueue,
+  "payment-out-queue": mapPaymentOutQueue,
   "reg-queue": mapRegistrationQueue,
   "reg-report-criteria": mapRegistrationQueue,
   "transaction-queue": mapTransactionQueue,
   "transaction-report": mapTransactionQueue,
   "txn-api-queue": mapTxnApiQueue,
   "txn-api-report": mapTxnApiQueue,
+  "work-efficiency-report": mapWorkEfficiency,
 } as const;
 
 export type QueueLoaderEndpoint = keyof typeof mappers;
@@ -61,7 +69,6 @@ export function QueueResultLoader({
 
   useEffect(() => {
     let cancelled = false;
-    setResult(null);
     const map = mappers[endpoint];
     const parsedQuery = JSON.parse(queryKey) as QueueQuery;
 
