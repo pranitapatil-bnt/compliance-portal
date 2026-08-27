@@ -14,6 +14,11 @@ export type DetailsQuery = {
   org?: string;
   lockId?: string;
   status?: string;
+  name?: string;
+  country?: string;
+  etv?: string;
+  clientNo?: string;
+  from?: string;
 };
 
 function asId(value: string | number | null | undefined): number | null {
@@ -36,6 +41,10 @@ function pickText(...values: Array<string | null | undefined>): string {
   return "";
 }
 
+function display(base: string, extra?: string | null): string {
+  return pickText(base, extra) || base;
+}
+
 function mergeDetails(
   base: RegistrationDetails,
   extras: Partial<RegistrationDetails>,
@@ -45,7 +54,7 @@ function mergeDetails(
     contactId: base.contactId ?? extras.contactId ?? null,
     accountId: base.accountId ?? extras.accountId ?? null,
     userResourceId: base.userResourceId ?? extras.userResourceId ?? null,
-    orgCode: pickText(base.orgCode, extras.orgCode, base.organization),
+    orgCode: pickText(base.orgCode, extras.orgCode, extras.organization),
     custType: pickText(base.custType, extras.custType) || "PERSONAL",
     preContactStatus:
       pickText(extras.preContactStatus, base.preContactStatus, base.status) ||
@@ -53,9 +62,34 @@ function mergeDetails(
     preAccountStatus:
       pickText(extras.preAccountStatus, base.preAccountStatus, base.status) ||
       "PENDING",
+    clientNumber: display(base.clientNumber, extras.clientNumber),
+    status: pickText(base.status, extras.status) || base.status,
+    name: display(base.name, extras.name),
+    clientType: display(base.clientType, extras.clientType ?? extras.custType),
+    occupation: display(base.occupation, extras.occupation),
+    email: display(base.email, extras.email),
+    legalEntity: display(base.legalEntity, extras.legalEntity),
+    dateOfBirth: display(base.dateOfBirth, extras.dateOfBirth),
+    currencyPair: display(base.currencyPair, extras.currencyPair),
+    estimatedTxnValue: display(
+      base.estimatedTxnValue,
+      extras.estimatedTxnValue,
+    ),
+    purposeOfTxn: display(base.purposeOfTxn, extras.purposeOfTxn),
+    countryOfResidence: display(
+      base.countryOfResidence,
+      extras.countryOfResidence,
+    ),
+    organization: display(
+      base.organization,
+      extras.organization ?? extras.orgCode,
+    ),
+    sourceOfFunds: display(base.sourceOfFunds, extras.sourceOfFunds),
+    primaryContact: display(base.primaryContact, extras.primaryContact),
     locked: base.locked || Boolean(extras.locked),
     owned: base.owned || Boolean(extras.owned),
     lockedBy: pickText(base.lockedBy, extras.lockedBy),
+    source: extras.source ?? base.source,
   };
 }
 
@@ -63,7 +97,13 @@ async function fillFromQueue(
   details: RegistrationDetails,
   contactId: string,
 ): Promise<RegistrationDetails> {
-  if (details.accountId != null) {
+  const needsQueue =
+    details.accountId == null ||
+    details.name === "—" ||
+    details.clientNumber === "—" ||
+    details.clientNumber === "";
+
+  if (!needsQueue) {
     return details;
   }
 
@@ -87,10 +127,18 @@ async function fillFromQueue(
     return mergeDetails(details, {
       accountId: asId(match.accountId),
       orgCode: match.organisation ?? undefined,
+      organization: match.organisation ?? undefined,
       userResourceId: asId(match.userResourceLockId),
       preContactStatus: match.complianceStatus ?? undefined,
       preAccountStatus: match.complianceStatus ?? undefined,
+      status: match.complianceStatus ?? undefined,
       custType: match.type ?? undefined,
+      clientType: match.type ?? undefined,
+      name: match.contactName ?? undefined,
+      countryOfResidence: match.countryOfResidence ?? undefined,
+      estimatedTxnValue: match.transactionValue ?? undefined,
+      clientNumber: match.tradeAccountNum ?? undefined,
+      legalEntity: match.legalEntity ?? undefined,
       locked: match.locked === true,
       lockedBy,
       owned: Boolean(
@@ -115,22 +163,34 @@ export async function getRegistrationDetails(
     accountId: asId(query.accountId),
     userResourceId: asId(query.lockId),
     orgCode: query.org?.trim() || "",
+    organization: query.org?.trim() || "",
     custType,
+    clientType: custType,
     preContactStatus: query.status?.trim() || "",
     preAccountStatus: query.status?.trim() || "",
+    status: query.status?.trim() || undefined,
+    name: query.name?.trim() || undefined,
+    countryOfResidence: query.country?.trim() || undefined,
+    estimatedTxnValue: query.etv?.trim() || undefined,
+    clientNumber: query.clientNo?.trim() || undefined,
+    source: query.from === "report" ? "REPORT" : "QUEUE",
   };
 
   try {
     const html = await complianceApi.registrationDetailsPage({
       contactId,
       custType,
-      source: "QUEUE",
+      source: query.from === "report" ? "REPORT" : "QUEUE",
     });
     const details = mergeDetails(
       parseRegistrationDetailsHtml(html),
       fromQuery,
     );
     if (details.clientNumber === "—" && details.name === "—") {
+      const fallback = mergeDetails({ ...emptyDetails }, fromQuery);
+      if (fallback.name !== "—" && fallback.name) {
+        return fillFromQueue(fallback, contactId);
+      }
       return {
         ...emptyDetails,
         ...fromQuery,
@@ -142,6 +202,19 @@ export async function getRegistrationDetails(
     logger.warn(
       `registrationDetails failed: ${error instanceof Error ? error.message : "unknown error"}`,
     );
+    const fallback = mergeDetails({ ...emptyDetails }, fromQuery);
+    if (fallback.name && fallback.name !== "—") {
+      return fillFromQueue(
+        {
+          ...fallback,
+          error:
+            error instanceof ApiError
+              ? error.message
+              : "Could not load the full record. Showing data from the onboarding queue.",
+        },
+        contactId,
+      );
+    }
     return {
       ...emptyDetails,
       ...fromQuery,

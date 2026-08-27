@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   onboardingCheckColumns,
@@ -54,6 +57,8 @@ export function OnboardingQueueTable({
   emptyTitle,
   emptyDescription,
 }: OnboardingQueueTableProps) {
+  const router = useRouter();
+
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-[0_10px_28px_rgba(15,40,70,0.06)]">
       <table className="w-full table-fixed text-left text-xs">
@@ -117,6 +122,21 @@ export function OnboardingQueueTable({
                         : "This record is locked"
                       : undefined
                   }
+                  tabIndex={row.href ? 0 : undefined}
+                  onClick={() => {
+                    if (row.href) {
+                      router.push(asRoute(row.href));
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (!row.href) {
+                      return;
+                    }
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      router.push(asRoute(row.href));
+                    }
+                  }}
                   className={cn(
                     "border-b border-slate-100 last:border-b-0",
                     row.href && "cursor-pointer hover:bg-[#f3f8fd]",

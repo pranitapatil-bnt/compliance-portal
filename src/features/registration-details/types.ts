@@ -1,6 +1,33 @@
 export type CheckBadge = {
   fail?: string;
   pass?: string;
+  count?: string;
+};
+
+export type CheckTable = {
+  headers: string[];
+  rows: string[][];
+};
+
+export type OtherPerson = {
+  id?: string;
+  status: string;
+  name: string;
+  custType?: string;
+};
+
+export type ActivityLogRow = {
+  date: string;
+  contract: string;
+  user: string;
+  activity: string;
+  activityType: string;
+  comment: string;
+};
+
+export type DetailField = {
+  label: string;
+  value: string;
 };
 
 export type RegistrationDetails = {
@@ -33,6 +60,24 @@ export type RegistrationDetails = {
   locked: boolean;
   owned: boolean;
   lockedBy: string;
+  source: "QUEUE" | "REPORT";
+  otherPeopleCount: string;
+  documentsCount: string;
+  watchlists: string[];
+  statusReasons: string[];
+  selectedReasons: string[];
+  furtherDetails: DetailField[];
+  otherPeople: OtherPerson[];
+  activityLog: ActivityLogRow[];
+  checks: {
+    blacklist: CheckTable;
+    eid: CheckTable;
+    sanction: CheckTable;
+    fraudPredict: CheckTable;
+    custom: CheckTable;
+    onfido: CheckTable;
+    documents: CheckTable;
+  };
   badges: {
     blacklist: CheckBadge;
     eid: CheckBadge;
@@ -40,9 +85,13 @@ export type RegistrationDetails = {
     fraudPredict: CheckBadge;
     custom: CheckBadge;
     onfido: CheckBadge;
+    documents: CheckBadge;
+    otherPeople: CheckBadge;
   };
   error?: string;
 };
+
+const emptyTable = (): CheckTable => ({ headers: [], rows: [] });
 
 export const emptyDetails: RegistrationDetails = {
   contactId: null,
@@ -74,6 +123,24 @@ export const emptyDetails: RegistrationDetails = {
   locked: false,
   owned: false,
   lockedBy: "",
+  source: "QUEUE",
+  otherPeopleCount: "",
+  documentsCount: "",
+  watchlists: [],
+  statusReasons: [],
+  selectedReasons: [],
+  furtherDetails: [],
+  otherPeople: [],
+  activityLog: [],
+  checks: {
+    blacklist: emptyTable(),
+    eid: emptyTable(),
+    sanction: emptyTable(),
+    fraudPredict: emptyTable(),
+    custom: emptyTable(),
+    onfido: emptyTable(),
+    documents: emptyTable(),
+  },
   badges: {
     blacklist: {},
     eid: {},
@@ -81,5 +148,7 @@ export const emptyDetails: RegistrationDetails = {
     fraudPredict: {},
     custom: {},
     onfido: {},
+    documents: {},
+    otherPeople: {},
   },
 };

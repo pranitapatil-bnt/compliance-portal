@@ -90,7 +90,12 @@ export async function updateRegistrationProfile(
     updatedAccountStatus: input.updatedStatus,
     preAccountStatus: input.preAccountStatus || null,
     comment: input.comment || null,
-    contactStatusReasons: input.reason ? [input.reason] : [],
+    contactStatusReasons: input.reason
+      ? input.reason
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [],
     watchlist: [],
     overallWatchlistStatus: false,
     complianceDoneOn: null,

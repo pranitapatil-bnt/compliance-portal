@@ -338,6 +338,10 @@ export function mapRegistrationQueue(payload: unknown): QueueResult {
     const org = firstText(row.organisation, row.organization);
     const lockId = idPart(row.userResourceLockId);
     const status = firstText(row.complianceStatus, row.overallStatus);
+    const name = firstText(row.contactName);
+    const country = firstText(row.countryOfResidence);
+    const etv = firstText(row.transactionValue);
+    const clientNo = firstText(row.tradeAccountNum, row.clientId);
     if (accountId) {
       params.set("accountId", accountId);
     }
@@ -349,6 +353,18 @@ export function mapRegistrationQueue(payload: unknown): QueueResult {
     }
     if (status) {
       params.set("status", status);
+    }
+    if (name) {
+      params.set("name", name);
+    }
+    if (country) {
+      params.set("country", country);
+    }
+    if (etv) {
+      params.set("etv", etv);
+    }
+    if (clientNo) {
+      params.set("clientNo", clientNo);
     }
     return {
       id: rowId(row, `reg-${index}`),

@@ -25,6 +25,11 @@ export default async function RegistrationDetailsPage({
     org?: string | string[];
     lockId?: string | string[];
     status?: string | string[];
+    name?: string | string[];
+    country?: string | string[];
+    etv?: string | string[];
+    clientNo?: string | string[];
+    from?: string | string[];
   }>;
 }) {
   const { contactId } = await params;
@@ -35,6 +40,11 @@ export default async function RegistrationDetailsPage({
     org: first(query.org),
     lockId: first(query.lockId),
     status: first(query.status),
+    name: first(query.name),
+    country: first(query.country),
+    etv: first(query.etv),
+    clientNo: first(query.clientNo),
+    from: first(query.from),
   });
 
   return <RegistrationDetailsView details={details} />;
